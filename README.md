@@ -87,7 +87,9 @@ cd searxng && docker compose up -d
   installation was removed as unused, stale, and cross-machine cache debris.
   Add it back deliberately if a real use case shows up.
 
-## Extensions (`agent/extensions/`)
+## Extensions
+
+### Local (`agent/extensions/*.ts`)
 
 | Extension | Purpose |
 |---|---|
@@ -96,7 +98,21 @@ cd searxng && docker compose up -d
 | `git-checkpoint.ts` | Auto-checkpoints (git stash create) before risky turns; skips cleanly on non-git dirs or clean trees |
 | `session-stats.ts` | `/session-stats` — cumulative token usage & cost for the current session, broken out by model, with fresh-vs-cached input and a zero-cache-read warning |
 | `obsidian-sync.ts` | Syncs session summaries into an Obsidian vault |
-| `status-footer.ts`, `tool-counter-widget.ts`, `theme-cycler.ts`, `welcome-dashboard.ts`, `session-name.ts` | TUI ergonomics |
+| `tool-counter-widget.ts`, `theme-cycler.ts`, `welcome-dashboard.ts`, `session-name.ts` | TUI ergonomics |
+| `status-footer.ts.disabled-superseded-by-statusline-pi` | Retired 2026-08-29 — superseded by the `statusline-pi` npm package below, which covers the same ground plus CPU/MEM, tokens/sec, PR number, and live cost. Kept on disk, renamed, for reference. |
+
+### npm packages (`agent/settings.json` → `packages`)
+
+| Package | Purpose |
+|---|---|
+| `pi-web-access` | Fetch/browse tools for the model |
+| `pi-condense` | Context-economy layer — recoverable pruning of finished tool-call batches (see `contextPrune` settings above) |
+| `cache-warm` | Keep-alive pings against prompt-cache TTL expiry (see above) |
+| `pi-lens` | Real-time LSP diagnostics, linters, formatters, type-checking, and structural (ast-grep) analysis on every write/edit — project-tunable via `.pi-lens.json` if a given repo's tooling makes it too noisy |
+| `@juicesharp/rpiv-ask-user-question` | Gives the model a structured `ask_user_question` tool — typed multiple-choice/free-text dialog instead of silently guessing on ambiguous decisions |
+| `statusline-pi` | Compact footer: dir, branch, changed files, PR #, live estimated session cost, CPU/MEM, context-remaining zone, tokens/sec, model |
+| `@plannotator/pi-extension` | Local browser-based plan/diff/PR review surface — annotate plans and code before implementation, feedback flows back to the model |
+| `advisor-pi` | Gives the model an `advisor` tool to consult a separate higher-capability model (default `openai-codex/gpt-5.6-sol`, high thinking) for planning/risk-review on complex tasks, capped at 5 uses/session-branch by default — each call is billed separately, so this is deliberately budget-limited, not unlimited |
 
 A regression check for these lives in `scripts/smoke-test-extensions.sh` —
 run it after editing any extension.

@@ -84,9 +84,12 @@ python3 -c "import json; json.load(open('web-search.json'))"
   cost/tokens for the current session, fresh-vs-cached input split,
   zero-cache-read warning. Must work in `-p`/non-TUI mode (`ctx.hasUI`
   false) via a `console.log` fallback, not only `ctx.ui.notify`.
-- `agent/extensions/obsidian-sync.ts`, `status-footer.ts`,
+- `agent/extensions/obsidian-sync.ts`,
   `tool-counter-widget.ts`, `theme-cycler.ts`, `themeMap.ts`,
   `welcome-dashboard.ts`, `session-name.ts` — TUI/workflow ergonomics.
+  `status-footer.ts` was retired 2026-08-29 (renamed to
+  `.disabled-superseded-by-statusline-pi`) in favor of the `statusline-pi`
+  npm package — do not re-enable both at once, they'd fight over the footer.
 - `agent/models.json` — provider definitions. Claude models behind the
   `llmhub` provider **must** carry `compat.cacheControlFormat: "anthropic"`
   or prompt caching silently fails and every token is billed at full
@@ -96,12 +99,15 @@ python3 -c "import json; json.load(open('web-search.json'))"
   local Ollama model here causes constant "summarizer failing, falling
   back to session model" warnings and defeats the point of a cheap
   summarizer. Prefer a cheap hosted model.
-- `cache-warm` (npm package, not a local file in `agent/extensions/`) —
-  keep-alive pings that stop a warm prompt cache from going cold between
-  turns. On by default; do not disable it globally without a specific
-  reason — it directly hedges the failure mode in
-  `prompt-cache-analysis.md`. If it ever needs disabling for a session,
-  prefer `/cache-warm off` over removing the package.
+- `cache-warm`, `advisor-pi`, `@juicesharp/rpiv-ask-user-question`,
+  `statusline-pi`, `@plannotator/pi-extension`, `pi-lens` (npm packages,
+  not files under `agent/extensions/`) — added 2026-08-29 as a batch, see
+  the implementation log. `advisor-pi` makes real, separately-billed model
+  calls (default `openai-codex/gpt-5.6-sol`, capped at 5 uses/session
+  branch) — never raise `max-uses` casually. `pi-lens` runs tooling on
+  every write/edit; if it's too noisy in a given project, tune it via that
+  project's own `.pi-lens.json`, don't disable it globally for one repo's
+  problem.
 - `web-search.json` `searchRouting` — the cheap, sequential, SearXNG-first
   default for everyday queries. Do not change this back to a multi-provider
   fan-out as the *default*; use the `/high-stakes-web-research` prompt

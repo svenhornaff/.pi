@@ -95,6 +95,11 @@
   "packages": [
     "npm:pi-web-access",
     "npm:pi-condense@2.9.1",
-    "npm:cache-warm"
+    "npm:cache-warm",
+    "npm:pi-lens",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:statusline-pi",
+    "npm:@plannotator/pi-extension",
+    "npm:advisor-pi"
   ]
 }
