@@ -1,0 +1,9 @@
+{
+  "name": "pi-global-extensions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dependencies for global pi extensions in ~/.pi/agent/extensions/",
+  "dependencies": {
+    "@ifi/oh-pi-themes": "latest"
+  }
+}

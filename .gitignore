@@ -1,0 +1,32 @@
+# --- Secrets / auth (never commit) ---
+agent/auth.json
+agent/models-store.json
+**/*.token
+**/*.secret
+**/*credentials*
+
+# --- Session logs (can contain file contents, command output, fetched web content) ---
+agent/sessions/
+session-archives/
+web-search-cache/
+
+# --- Backups (transient, timestamped snapshots already tracked via git history instead) ---
+backups/
+*.bak
+*.bak.*
+
+# --- Generated / cache / installed deps (reproducible from settings.json + package manifests) ---
+agent/npm/
+agent/.pi/npm/
+agent/extensions/node_modules/
+agent/extensions/package-lock.json
+mcp-cache.json
+mcp-npx-cache.json
+agent/.update-check
+
+# --- SearXNG runtime data (config is tracked, data/state is not) ---
+searxng/data/
+
+# --- OS noise ---
+.DS_Store
+**/.DS_Store

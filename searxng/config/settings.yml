@@ -1,0 +1,31 @@
+# Local SearXNG config for pi-web-access
+# Bound by Docker Compose to 127.0.0.1:8888 only.
+use_default_settings: true
+
+general:
+  instance_name: "Pi Local SearXNG"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json
+
+server:
+  bind_address: "0.0.0.0"
+  port: 8080
+  secret_key: "825f930ce76e692d8df4be85e757866311699cebe82df4869dff8f610caf5a8f"
+  limiter: false
+  public_instance: false
+  base_url: "http://127.0.0.1:8888/"
+
+ui:
+  static_use_hash: true
+
+outgoing:
+  request_timeout: 5.0
+  max_request_timeout: 10.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: true

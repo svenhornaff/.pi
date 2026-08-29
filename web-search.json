@@ -1,0 +1,16 @@
+{
+  "exaApiKey": "!security find-generic-password -ws 'exa-api-key'",
+  "braveApiKey": "!security find-generic-password -ws 'brave-api-key'",
+  "tavilyApiKey": "!security find-generic-password -ws 'tavily-api-key'",
+  "workflow": "summary-review",
+  "searxngBaseUrl": "http://127.0.0.1:8888",
+  "ssrf": {
+    "allowRanges": [
+      "127.0.0.1/32"
+    ]
+  },
+  "searchRouting": {
+    "providers": ["searxng", "exa", "openai", "brave", "tavily"],
+    "fallbackOn": ["unsupported", "transient", "quota", "network", "invalid-response"]
+  }
+}

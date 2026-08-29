@@ -1,0 +1,209 @@
+{
+  "providers": {
+    "ollama": {
+      "baseUrl": "http://localhost:11434/v1",
+      "api": "openai-completions",
+      "apiKey": "ollama",
+      "models": [
+        {
+          "id": "qwen3:4b-instruct",
+          "name": "Qwen 3 4B Instruct (Ollama)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 262144,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "samplingParams": {
+            "temperature": 0.1
+          }
+        },
+        {
+          "id": "qwen2.5:7b",
+          "name": "Qwen 2.5 7B (Ollama)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 32768,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "samplingParams": {
+            "temperature": 0.1
+          }
+        },
+        {
+          "id": "qwen3:8b",
+          "name": "Qwen 3 8B (Ollama)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 40960,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "samplingParams": {
+            "temperature": 0.1
+          }
+        },
+        {
+          "id": "llama3.1:8b",
+          "name": "Llama 3.1 8B (Ollama)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 131072,
+          "maxTokens": 16384,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "mistral:latest",
+          "name": "Mistral 7B (Ollama)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 32768,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        },
+        {
+          "id": "phi4:latest",
+          "name": "Phi-4 (Ollama)",
+          "reasoning": false,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 128000,
+          "maxTokens": 8192,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          }
+        }
+      ],
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false
+      }
+    },
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKey": "!security find-generic-password -ws 'openrouter-api-key'",
+      "api": "openai-completions"
+    },
+    "llmhub": {
+      "baseUrl": "https://llm-server.llmhub.t-systems.net/v2",
+      "api": "openai-completions",
+      "apiKey": "!security find-generic-password -ws 'llmhub'",
+      "models": [
+        {
+          "id": "gpt-5",
+          "name": "GPT-5 (LLMHub)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 128000,
+          "maxTokens": 32768,
+          "cost": {
+            "input": 1.2,
+            "output": 9.55,
+            "cacheRead": 0.12,
+            "cacheWrite": 1.5
+          },
+          "_costNote": "Sourced from ~/.pi/llmhub-model-pricing.md (PO-provided LLMHub catalog, 2026-08-29): GPT 5 (Microsoft Azure, Standard tier, Sweden) = input EUR1.20/M, output EUR9.55/M — replaces the previously unconfirmed 0/0 placeholder. cacheRead/cacheWrite are not published by LLMHub (blended rate only); estimated at 10%/125% of input per Anthropic's standard cache-pricing ratio as a placeholder — GPT-5 actually uses OpenAI-style automatic prompt caching (no cache_control breakpoints), so this estimate is lower-confidence than for the Claude models below. Re-verify against a real invoice if precision matters."
+        },
+        {
+          "id": "claude-sonnet-4.5",
+          "name": "Claude Sonnet 4.5 (LLMHub)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 200000,
+          "maxTokens": 32000,
+          "cost": {
+            "input": 2.97,
+            "output": 14.85,
+            "cacheRead": 0.30,
+            "cacheWrite": 3.71
+          },
+          "compat": {
+            "cacheControlFormat": "anthropic"
+          },
+          "_costNote": "Corrected 2026-08-29 from ~/.pi/llmhub-model-pricing.md (PO-provided LLMHub catalog): 'Claude 4.5 Sonnet' (GCP, Standard tier) = input EUR2.97/M, output EUR14.85/M. This replaces a materially wrong estimate that had incorrectly carried over the claude-sonnet-4.6 rate (7.28/27.30) — 4.5 Sonnet and Sonnet 4.6 are priced differently on LLMHub, confirmed by the catalog. cacheRead/cacheWrite still estimated at 10%/125% of input (not published by LLMHub); only the input/output rates are catalog-confirmed."
+        },
+        {
+          "id": "claude-sonnet-4.6",
+          "name": "Claude Sonnet 4.6 (LLMHub)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 7.28,
+            "output": 27.30,
+            "cacheRead": 0.73,
+            "cacheWrite": 9.10
+          },
+          "compat": {
+            "cacheControlFormat": "anthropic"
+          },
+          "_costNote": "Confirmed twice now: originally against a pi-dev key billing screenshot, and again 2026-08-29 against ~/.pi/llmhub-model-pricing.md (PO-provided LLMHub catalog) — both agree: 'Claude Sonnet 4.6' (GCP, Standard tier) = input EUR7.28/M, output EUR27.30/M. cacheRead/cacheWrite still estimated at 10%/125% of input per Anthropic's standard cache-pricing ratio (LLMHub's catalog only publishes blended input/output rates, not cache rates — not yet independently confirmed on an invoice line item). compat.cacheControlFormat=anthropic required so pi emits cache_control breakpoints per LLMHub's prefix-caching guide (https://docs.llmhub.t-systems.net/guides/prefix-caching/) — root cause of the EUR275 uncached session documented in prompt-cache-analysis.md. Re-verify cache_control is actually forwarded end-to-end with a live session (see Verification section there)."
+        },
+        {
+          "id": "claude-opus-4.6",
+          "name": "Claude Opus 4.6 (LLMHub)",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "contextWindow": 1000000,
+          "maxTokens": 128000,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "compat": {
+            "cacheControlFormat": "anthropic"
+          },
+          "_costNote": "Cost still unconfirmed, and now for a stronger reason: cross-checked 2026-08-29 against ~/.pi/llmhub-model-pricing.md (PO-provided LLMHub catalog, 35 models) and there is NO 'Claude Opus' entry at all — LLMHub currently only lists Claude Haiku 4.5, Claude 4.5 Sonnet, and Claude Sonnet 4.6. This model may not actually be offered on this LLMHub tenant; do not trust cost/usage display or rely on this id for anything cost-sensitive until confirmed via https://apikey.llmhub.t-systems.net/login or a live successful call. cacheControlFormat is left as anthropic on the assumption that IF this model exists, it uses the same mechanism as the other LLMHub Claude models — unverified."
+        }
+      ]
+    }
+  }
+}
