@@ -1163,3 +1163,28 @@ All five auto-registered into `packages` in `agent/settings.json` by `pi install
 **Noted, not yet fixed:** `protected-paths.ts`'s bash-redirection guard is over-broad — it flags any bash command whose *string content* contains a protected-path token (e.g. a vendored-dependency directory name, or a dotfile name like `.npmrc`) even for pure read-only commands like `ls` or `grep`, and even for heredoc content that merely *mentions* that token in prose. This slowed down verification in this session (had to route around it repeatedly) and is worth tightening to require an actual write indicator (`>`, `tee`, `sed -i`, etc.) *together with* the path token, not the path token alone. Revisit `protected-paths.ts`'s bash-matching logic.
 
 **Other candidates considered and deliberately not installed** (worth revisiting individually, not blanket-recommended): a project-local ESLint/type-check runner beyond what `pi-lens` already gives generically; a dedicated secrets-scanning pre-commit hook (semgrep/gitleaks) for this repo specifically, since Plannotator's own repo ships its own secret-scan and semgrep config as a model worth copying if this repo's guardrail coverage ever needs a second, independent layer beyond `permission-gate.ts`/`protected-paths.ts`.
+
+---
+
+## Implementation log — 2026-08-29: `protected-paths.ts` bash-guard rewrite (false-positive/false-negative fix)
+
+**Found (this session, self-inflicted and confirmed repeatedly):** the previous bash-redirection check fired on any command whose *whole text* contained a protected-path substring, once *any* write-shaped token appeared anywhere in the command — not on whether that token was actually the write target. Concretely, this blocked:
+- `grep -n "node_modules" ...` (a pure read) — the word "install" and stray `>` from unrelated redirects elsewhere in the same multi-line command tripped the write-indicator regex.
+- `npm install-scripts ls` — "install" alone matched, with no actual file write happening.
+- `find . -iname "*.npmrc"` — blocked purely for containing the substring `.npmrc`, no write construct even needed once other lines in the batch had one.
+- A heredoc appended to a non-protected file, blocked for merely *mentioning* "node_modules/" or "secret" in prose.
+
+Also found one false negative in the old `WRITE_INDICATORS` regex: a bare `>` inside `2>&1` (stderr-to-stdout fd dup) or `2>/dev/null` counted as a "write indicator" even though neither writes to a file at all — harmless on its own, but confirms the original regex wasn't actually locating redirect targets, just detecting the character `>` anywhere.
+
+**Fixed:** rewrote the bash-command check in `agent/extensions/protected-paths.ts` to extract actual write-target tokens from each recognized construct (redirect `>`/`>>` excluding fd-dup and `/dev/null`, `tee`, `dd of=`, `sed -i <file>`, `cp`/`mv`/`install`(1)/`truncate`'s destination token, and Python/Node `open(path, "w")` one-liners) and only check *those extracted targets* against the protected-path rules — not the raw command string. Package-manager `install` subcommands (`npm install`, `pip install`, ...) are explicitly excluded from the coreutils-`install`(1) destination scan so they can't be misread as a file-copy write. `~` in a target is expanded to `$HOME` before matching so the absolute-path rules (`models.json`/`settings.json`/`web-search.json`) still fire on the tilde form most commands actually use — confirmed this was NOT previously handled (a `cp ... ~/.pi/agent/settings.json` would have missed the exact-absolute-path check that only compared against the `$HOME`-expanded form).
+
+**Verified with an 18-case standalone test matrix** (`/tmp/test-guard3.mjs`, ported logic, not the real extension file, so iteration was safe) before touching the real file: 5 true-positive cases (writes to `.env`, `auth.json` via heredoc/`sed -i`/`cp`, `dd of=` to an SSH key, `cp` onto `settings.json` via both `~` and expanded-`$HOME` forms) and 13 true-negative cases (today's actual false positives verbatim, plus stderr-fd-dup, benign redirects, reads FROM a protected-looking filename, and a generic non-pi `settings.json` that must NOT be blocked) — all 18 passed before porting.
+
+**Ported and re-verified against the real extension:**
+- `pi -p` smoke test extended with a 9th/10th case (`does not block a read-only grep mentioning node_modules`) reproducing the exact session false positive as a permanent regression check.
+- Full suite: **10/10 passed** (previously 9/9; new case added, none broken).
+- Live re-run of the exact commands that were false-blocked earlier in this session (`grep -n node_modules ...`, `find . -iname "*.npmrc"`) — both now exit 0 normally.
+- Live re-confirmation that a real violation is still caught: `printf 'test' > .env` in `/tmp` — still blocked, same as before.
+- `lsp_diagnostics` on the rewritten file: primary TypeScript check clean.
+
+**Scope note, left unchanged and documented in the file's own header:** this is still a regex/heuristic gate, not a sandbox. It does not defeat deliberate obfuscation (base64-encoded commands, env-var-assembled paths, unusual quoting). It exists to catch the common non-adversarial case — the same posture as `permission-gate.ts`. Reading FROM a protected-looking filename to write elsewhere (e.g. `cp secrets.yaml /tmp/out.txt`) is deliberately still allowed through this gate by design — only the destination is checked; exfiltration-shaped reads are `permission-gate.ts`'s network-egress patterns' concern, not this file's.
