@@ -1,0 +1,119 @@
+# ~/.pi — Personal Pi Coding-Agent Configuration
+
+This is the global configuration home for [pi](https://github.com/earendil-works/pi)
+(`@earendil-works/pi-coding-agent`), covering models, extensions, prompt
+templates, web search, and local infrastructure (SearXNG) used across all
+projects on this machine.
+
+It is tracked in git so config changes are diffable and revertible — see
+[Security & what's excluded](#security--whats-excluded) for what deliberately
+stays out of version control.
+
+## Layout
+
+```
+agent/
+  settings.json        Core pi settings: default model, compaction, retry,
+                        contextPrune (pi-condense), Obsidian sync, packages
+  models.json           Provider/model definitions & pricing (openrouter,
+                        llmhub, ollama, openai-codex) — no raw API keys,
+                        only macOS Keychain references
+  trust.json            Per-project trust decisions
+  auth.json             Provider credentials (gitignored, never committed)
+  models-store.json     Cached upstream model metadata (gitignored)
+  extensions/           Global pi extensions — see below
+  prompts/              Global prompt templates (/name in the editor)
+  themes/                Custom TUI themes
+  sessions/              Session transcripts (gitignored — can contain file
+                          contents, command output, fetched web content)
+web-search.json         Web search provider config & routing policy
+searxng/                Local SearXNG instance (docker-compose + config)
+scripts/                Maintenance scripts (see below)
+setup-refactor-plan.md  Living decision log for this config (read this for
+                        the "why" behind non-obvious choices)
+llmhub-model-pricing.md Reference pricing catalog for the LLMHub provider
+prompt-cache-analysis.md Root-cause writeup of a real prompt-caching cost
+                        incident that shaped several settings below
+```
+
+## Setup on a new machine
+
+```bash
+git clone git@github.com:svenhornaff/.pi.git ~/.pi
+cd ~/.pi/agent && npm install --prefix extensions   # extension deps
+```
+
+Then populate secrets (never committed):
+- `agent/auth.json` — provider credentials, or let `pi auth login` create it
+- API keys referenced from `models.json`/`web-search.json` via
+  `!security find-generic-password -ws '<service>'` must exist in the macOS
+  Keychain under those service names (e.g. `openrouter-api-key`, `llmhub`)
+
+Bring up local search infra (optional, used by the default web-search routing):
+
+```bash
+cd searxng && docker compose up -d
+```
+
+## Key design decisions
+
+- **Default model**: `openrouter/anthropic/claude-sonnet-5` at medium thinking
+  — a deliberate cost/capability balance, not the most powerful option
+  available. See `setup-refactor-plan.md` for the reasoning.
+- **Context pruning** (`pi-condense`, via `contextPrune` in `settings.json`)
+  keeps long sessions affordable by summarizing finished tool-call batches
+  into recoverable stubs, retrievable with `context_tree_query`. The
+  summarizer model is a cheap hosted model (`openrouter/openai/gpt-4.1-mini`),
+  chosen after a local Ollama summarizer proved too flaky under load.
+- **Prompt caching**: LLMHub Claude models require
+  `compat.cacheControlFormat: "anthropic"` in `models.json` to actually use
+  provider prompt caching. This was *not* the default and its absence
+  produced a real, expensive incident — see `prompt-cache-analysis.md`.
+- **Web search** defaults to a cheap, sequential, SearXNG-first routing
+  policy (`web-search.json` → `searchRouting`) for everyday queries. For
+  research that genuinely warrants full multi-provider coverage, use the
+  `/high-stakes-web-research` prompt template instead of changing the
+  global default.
+- **MCP**: deliberately not configured. A previous `pi-mcp-adapter`
+  installation was removed as unused, stale, and cross-machine cache debris.
+  Add it back deliberately if a real use case shows up.
+
+## Extensions (`agent/extensions/`)
+
+| Extension | Purpose |
+|---|---|
+| `permission-gate.ts` | Prompts/blocks dangerous bash (force-push, `rm -rf`, credential reads, network egress, package publishing) |
+| `protected-paths.ts` | Blocks writes/edits to secrets, pi's own config files, and `.env*`/`.ssh/`/`.gnupg/` — including via bash redirection, not just the write/edit tools |
+| `git-checkpoint.ts` | Auto-checkpoints (git stash create) before risky turns; skips cleanly on non-git dirs or clean trees |
+| `session-stats.ts` | `/session-stats` — cumulative token usage & cost for the current session, broken out by model, with fresh-vs-cached input and a zero-cache-read warning |
+| `obsidian-sync.ts` | Syncs session summaries into an Obsidian vault |
+| `status-footer.ts`, `tool-counter-widget.ts`, `theme-cycler.ts`, `welcome-dashboard.ts`, `session-name.ts` | TUI ergonomics |
+
+A regression check for these lives in `scripts/smoke-test-extensions.sh` —
+run it after editing any extension.
+
+## Scripts (`scripts/`)
+
+| Script | Purpose |
+|---|---|
+| `smoke-test-extensions.sh` | Verifies the guardrail extensions still block/allow the right things |
+| `archive-old-sessions.sh` | Archives session transcripts older than 90 days (`--dry-run` supported) |
+| `session-usage-report.py` | Aggregates historical cost/tokens by provider/model across all sessions; flags zero-cache-read sessions that indicate a caching misconfiguration |
+
+## Security & what's excluded
+
+Never committed (see `.gitignore`): `agent/auth.json`, `agent/models-store.json`,
+session transcripts, timestamped `.bak` backups, installed `node_modules`,
+and SearXNG runtime data. API keys are referenced indirectly via macOS
+Keychain lookups (`!security find-generic-password ...`) in `models.json`
+and `web-search.json` — the config files themselves contain no secrets.
+
+This config directory has no sandbox/container isolation of its own; trust
+decisions in `agent/trust.json` grant real tool access to the listed project
+directories. Treat it accordingly if any trusted project processes
+untrusted external input.
+
+## License
+
+[NCSAL](LICENSE) — non-commercial use, source-available. Contact the author
+for commercial licensing.
