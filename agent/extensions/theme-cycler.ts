@@ -22,7 +22,10 @@
  * Usage: pi -e extensions/theme-cycler.ts -e extensions/minimal.ts
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { truncateToWidth } from "@earendil-works/pi-tui";
 import { applyExtensionDefaults } from "./themeMap.ts";
 
@@ -133,7 +136,10 @@ export default function (pi: ExtensionAPI) {
 					showSwatch(ctx);
 					ctx.ui.notify(`Theme: ${arg}`, "info");
 				} else {
-					ctx.ui.notify(`Theme not found: ${arg}. Use /theme to see available themes.`, "error");
+					ctx.ui.notify(
+						`Theme not found: ${arg}. Use /theme to see available themes.`,
+						"error",
+					);
 				}
 				return;
 			}

@@ -55,7 +55,7 @@
   },
   "contextPrune": {
     "enabled": true,
-    "showPruneStatusLine": true,
+    "showPruneStatusLine": false,
     "summarizerModel": "openrouter/openai/gpt-4.1-mini",
     "summarizerThinking": "default",
     "pruneOn": "agent-message",

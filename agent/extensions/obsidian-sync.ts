@@ -1,4 +1,7 @@
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
 import path from "node:path";
@@ -78,11 +81,7 @@ const DEFAULTS: EffectiveSettings = {
     "setup-doc/**/*.md",
     ".pi/**/*.md",
   ],
-  exclude: [
-    ".git/**",
-    "node_modules/**",
-    ".DS_Store",
-  ],
+  exclude: [".git/**", "node_modules/**", ".DS_Store"],
   rewriteImageLinks: true,
   maxFileSizeMB: 50,
 };
@@ -93,7 +92,10 @@ const MARKDOWN_EXT = ".md";
 export default function obsidianSyncExtension(pi: ExtensionAPI) {
   pi.registerCommand("obsidian", {
     description: "Sync repository markdown docs to an Obsidian vault",
-    getArgumentCompletions: async (args: string, ctx?: Partial<ExtensionContext>) => {
+    getArgumentCompletions: async (
+      args: string,
+      ctx?: Partial<ExtensionContext>,
+    ) => {
       const safeCwd = getSafeCwd(ctx);
       const settings = getEffectiveSettings(ctx);
       const discovered = discoverMarkdownFiles(safeCwd, settings).slice(0, 50);
@@ -106,13 +108,15 @@ export default function obsidianSyncExtension(pi: ExtensionAPI) {
       const endsWithSpace = args !== args.trimEnd();
       const tokens = tokenizeArgs(args);
       const completedTokens = endsWithSpace ? tokens : tokens.slice(0, -1);
-      const partialToken = (endsWithSpace ? "" : tokens[tokens.length - 1]) ?? "";
+      const partialToken =
+        (endsWithSpace ? "" : tokens[tokens.length - 1]) ?? "";
 
       // Understand what's already present in completedTokens.
       const sepIdx = completedTokens.indexOf("--");
-      const leftOfSep = sepIdx >= 0 ? completedTokens.slice(0, sepIdx) : completedTokens;
-      const usedFlags = new Set(leftOfSep.filter(t => t.startsWith("--")));
-      const hasProjectName = leftOfSep.some(t => !t.startsWith("--"));
+      const leftOfSep =
+        sepIdx >= 0 ? completedTokens.slice(0, sepIdx) : completedTokens;
+      const usedFlags = new Set(leftOfSep.filter((t) => t.startsWith("--")));
+      const hasProjectName = leftOfSep.some((t) => !t.startsWith("--"));
       const afterSep = sepIdx >= 0;
 
       // Build candidates for the next token.
@@ -129,22 +133,25 @@ export default function obsidianSyncExtension(pi: ExtensionAPI) {
 
       // Filter by the partial token being typed.
       const lower = partialToken.toLowerCase();
-      const filtered = nextCandidates.filter(c =>
-        !lower || c.toLowerCase().startsWith(lower),
+      const filtered = nextCandidates.filter(
+        (c) => !lower || c.toLowerCase().startsWith(lower),
       );
       if (filtered.length === 0) return null;
 
       // Return full argument strings so applyCompletion replaces correctly.
       const base = completedTokens.join(" ");
-      return filtered.map(candidate => {
+      return filtered.map((candidate) => {
         const fullValue = base ? `${base} ${candidate}` : candidate;
         return {
           value: fullValue,
           label: fullValue,
-          description: candidate.endsWith(".md") ? "Markdown file"
-            : candidate === "--" ? "Files separator"
-            : candidate.startsWith("--") ? "Option"
-            : "Project name",
+          description: candidate.endsWith(".md")
+            ? "Markdown file"
+            : candidate === "--"
+              ? "Files separator"
+              : candidate.startsWith("--")
+                ? "Option"
+                : "Project name",
         };
       });
     },
@@ -251,9 +258,12 @@ function parseArgs(args: string, cwd: string): SyncOptions {
 }
 
 function tokenizeArgs(args: string): string[] {
-  return args
-    .trim()
-    .match(/(?:[^\s"]+|"[^"]*")+/g)?.map(token => token.replace(/^"(.*)"$/, "$1")) ?? [];
+  return (
+    args
+      .trim()
+      .match(/(?:[^\s"]+|"[^"]*")+/g)
+      ?.map((token) => token.replace(/^"(.*)"$/, "$1")) ?? []
+  );
 }
 
 /* =========================
@@ -267,7 +277,9 @@ function getSafeCwd(ctx?: Partial<ExtensionContext> | null): string {
   return process.cwd();
 }
 
-function getEffectiveSettings(ctx?: Partial<ExtensionContext> | null): EffectiveSettings {
+function getEffectiveSettings(
+  ctx?: Partial<ExtensionContext> | null,
+): EffectiveSettings {
   const homeDir = homeDirFromCtx(ctx);
   const cwd = getSafeCwd(ctx);
 
@@ -313,13 +325,13 @@ async function validateVault(vaultPath: string): Promise<void> {
   if (!vaultPath || !vaultPath.trim()) {
     throw new Error(
       "Obsidian vault path is not configured.\n\n" +
-      "Set it in ~/.pi/agent/settings.json (global, recommended):\n" +
-      '  { "obsidian": { "vaultPath": "/absolute/path/to/your/vault" } }\n\n' +
-      "Or in .pi/settings.json (project-local override):\n" +
-      '  { "obsidian": { "vaultPath": "/absolute/path/to/your/vault" } }\n\n' +
-      "Or via environment variable:\n" +
-      "  export OBSIDIAN_VAULT_PATH=/absolute/path/to/your/vault\n\n" +
-      "See docs/obsidian-sync-guide.md for full setup instructions."
+        "Set it in ~/.pi/agent/settings.json (global, recommended):\n" +
+        '  { "obsidian": { "vaultPath": "/absolute/path/to/your/vault" } }\n\n' +
+        "Or in .pi/settings.json (project-local override):\n" +
+        '  { "obsidian": { "vaultPath": "/absolute/path/to/your/vault" } }\n\n' +
+        "Or via environment variable:\n" +
+        "  export OBSIDIAN_VAULT_PATH=/absolute/path/to/your/vault\n\n" +
+        "See docs/obsidian-sync-guide.md for full setup instructions.",
     );
   }
 
@@ -332,15 +344,19 @@ async function validateVault(vaultPath: string): Promise<void> {
     if (!stats.isDirectory()) {
       throw new Error(
         `Obsidian vault path is not a directory: ${vaultPath}\n` +
-        "Make sure the path points to the root of your Obsidian vault folder."
+          "Make sure the path points to the root of your Obsidian vault folder.",
       );
     }
   } catch (error: unknown) {
-    if (error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error as NodeJS.ErrnoException).code === "ENOENT"
+    ) {
       throw new Error(
         `Obsidian vault not found at: ${vaultPath}\n` +
-        "Verify the path exists and that Obsidian has been opened there at least once.\n" +
-        "Check the path in your settings.json or OBSIDIAN_VAULT_PATH env var."
+          "Verify the path exists and that Obsidian has been opened there at least once.\n" +
+          "Check the path in your settings.json or OBSIDIAN_VAULT_PATH env var.",
       );
     }
     throw error;
@@ -371,7 +387,11 @@ async function runSync(
   const errors: string[] = [];
   const warnings: string[] = [];
 
-  const projectDir = path.join(settings.vaultPath, settings.projectFolder, options.projectName);
+  const projectDir = path.join(
+    settings.vaultPath,
+    settings.projectFolder,
+    options.projectName,
+  );
   const attachmentsDir = path.join(projectDir, settings.attachmentsFolder);
 
   const markdownFiles = resolveMarkdownSelection(ctx.cwd, settings, options);
@@ -394,7 +414,7 @@ async function runSync(
   // Build image map for potential images
   const imageMap = discoverImages(ctx.cwd, settings);
   const imageLookup = new Map(
-    imageMap.map(img => [normalizeRelativePath(img.rel), img]),
+    imageMap.map((img) => [normalizeRelativePath(img.rel), img]),
   );
 
   // Track which images are actually referenced
@@ -403,7 +423,11 @@ async function runSync(
 
   for (const file of syncPlan) {
     try {
-      await validateFileSize(file.srcAbsolute, settings.maxFileSizeMB, "markdown file");
+      await validateFileSize(
+        file.srcAbsolute,
+        settings.maxFileSizeMB,
+        "markdown file",
+      );
 
       const rawContent = await fs.readFile(file.srcAbsolute, "utf8");
       const { content: enhanced, referencedImages } = prepareMarkdownContent({
@@ -453,7 +477,11 @@ async function runSync(
     });
 
     if (!options.dryRun) {
-      await fs.writeFile(path.join(projectDir, "00-INDEX.md"), indexContent, "utf8");
+      await fs.writeFile(
+        path.join(projectDir, "00-INDEX.md"),
+        indexContent,
+        "utf8",
+      );
     }
   } catch (error: unknown) {
     errors.push(formatError("Failed to create index", error));
@@ -482,8 +510,8 @@ function resolveMarkdownSelection(
   if (options.explicitFiles.length > 0) {
     return uniqueSorted(
       options.explicitFiles
-        .map(f => normalizeRelativePath(f))
-        .filter(f => fsSync.existsSync(path.join(cwd, f))),
+        .map((f) => normalizeRelativePath(f))
+        .filter((f) => fsSync.existsSync(path.join(cwd, f))),
     );
   }
 
@@ -496,7 +524,10 @@ function resolveMarkdownSelection(
   return discovered;
 }
 
-function discoverMarkdownFiles(cwd: string, settings: EffectiveSettings): string[] {
+function discoverMarkdownFiles(
+  cwd: string,
+  settings: EffectiveSettings,
+): string[] {
   const found = new Set<string>();
 
   for (const pattern of settings.include) {
@@ -511,7 +542,8 @@ function discoverMarkdownFiles(cwd: string, settings: EffectiveSettings): string
 
       for (const rel of walkFiles(absBase, cwd)) {
         if (shouldExclude(rel, settings.exclude)) continue;
-        if (extension && path.extname(rel).toLowerCase() !== extension) continue;
+        if (extension && path.extname(rel).toLowerCase() !== extension)
+          continue;
         found.add(rel);
       }
     } else {
@@ -530,7 +562,7 @@ function discoverMarkdownFiles(cwd: string, settings: EffectiveSettings): string
 
 function discoverImages(
   cwd: string,
-  settings: EffectiveSettings
+  settings: EffectiveSettings,
 ): Array<{ rel: string; abs: string; dstName: string }> {
   const found: Array<{ rel: string; abs: string; dstName: string }> = [];
 
@@ -576,7 +608,10 @@ function walkFiles(dir: string, root: string): string[] {
   return output;
 }
 
-function splitRecursivePattern(pattern: string): { baseDir: string; extension?: string } {
+function splitRecursivePattern(pattern: string): {
+  baseDir: string;
+  extension?: string;
+} {
   const normalized = normalizeRelativePath(pattern);
   const starIndex = normalized.indexOf("/**/");
   if (starIndex === -1) {
@@ -597,8 +632,12 @@ function splitRecursivePattern(pattern: string): { baseDir: string; extension?: 
  * File planning
  * ========================= */
 
-function buildSyncPlan(markdownFiles: string[], cwd: string, projectDir: string): SyncFile[] {
-  return markdownFiles.map(srcRelative => {
+function buildSyncPlan(
+  markdownFiles: string[],
+  cwd: string,
+  projectDir: string,
+): SyncFile[] {
+  return markdownFiles.map((srcRelative) => {
     const dstFileName = relativePathToSafeMarkdownName(srcRelative);
     return {
       srcRelative,
@@ -625,10 +664,22 @@ function prepareMarkdownContent(params: {
   imageLookup: Map<string, { rel: string; abs: string; dstName: string }>;
   attachmentsFolder: string;
 }): PreparedContent {
-  const { content, srcRelative, projectName, rewriteImageLinks, imageLookup, attachmentsFolder } = params;
+  const {
+    content,
+    srcRelative,
+    projectName,
+    rewriteImageLinks,
+    imageLookup,
+    attachmentsFolder,
+  } = params;
 
   const { transformed, referencedImages } = rewriteImageLinks
-    ? rewriteMarkdownImageLinks(content, srcRelative, imageLookup, attachmentsFolder)
+    ? rewriteMarkdownImageLinks(
+        content,
+        srcRelative,
+        imageLookup,
+        attachmentsFolder,
+      )
     : { transformed: content, referencedImages: new Set<string>() };
 
   const enhanced = upsertFrontmatter(transformed, {
@@ -712,7 +763,11 @@ function upsertFrontmatter(
   const mergedMeta = {
     ...existing.data,
     title: existing.data.title ?? metadata.title,
-    tags: uniqueSorted([...(asStringArray(existing.data.tags)), ...metadata.tags, "obsidian-sync"]),
+    tags: uniqueSorted([
+      ...asStringArray(existing.data.tags),
+      ...metadata.tags,
+      "obsidian-sync",
+    ]),
     status: existing.data.status ?? metadata.status,
     project: existing.data.project ?? metadata.project,
     type: existing.data.type ?? metadata.type,
@@ -723,7 +778,10 @@ function upsertFrontmatter(
   return `${serializeFrontmatter(mergedMeta)}\n${mergedBody}`;
 }
 
-function parseFrontmatter(content: string): { data: Record<string, unknown>; body: string } {
+function parseFrontmatter(content: string): {
+  data: Record<string, unknown>;
+  body: string;
+} {
   const trimmed = content.trimStart();
   if (!trimmed.startsWith("---\n")) {
     return { data: {}, body: content };
@@ -749,7 +807,7 @@ function parseFrontmatter(content: string): { data: Record<string, unknown>; bod
       const items = rawValue
         .slice(1, -1)
         .split(",")
-        .map(v => v.trim().replace(/^"|"$/g, ""))
+        .map((v) => v.trim().replace(/^"|"$/g, ""))
         .filter(Boolean);
       data[key] = items;
     } else {
@@ -778,7 +836,9 @@ function serializeFrontmatter(data: Record<string, unknown>): string {
 
     const value = data[key];
     if (Array.isArray(value)) {
-      lines.push(`${key}: [${value.map(v => quoteYaml(String(v))).join(", ")}]`);
+      lines.push(
+        `${key}: [${value.map((v) => quoteYaml(String(v))).join(", ")}]`,
+      );
     } else {
       lines.push(`${key}: ${quoteYaml(String(value))}`);
     }
@@ -787,7 +847,9 @@ function serializeFrontmatter(data: Record<string, unknown>): string {
   for (const [key, value] of Object.entries(data)) {
     if (orderedKeys.includes(key)) continue;
     if (Array.isArray(value)) {
-      lines.push(`${key}: [${value.map(v => quoteYaml(String(v))).join(", ")}]`);
+      lines.push(
+        `${key}: [${value.map((v) => quoteYaml(String(v))).join(", ")}]`,
+      );
     } else {
       lines.push(`${key}: ${quoteYaml(String(value))}`);
     }
@@ -814,7 +876,7 @@ function createIndex(params: {
   const today = todayIso();
 
   const links = files
-    .map(file => `- [[${path.basename(file.dstFileName, ".md")}]]`)
+    .map((file) => `- [[${path.basename(file.dstFileName, ".md")}]]`)
     .join("\n");
 
   return `---
@@ -898,7 +960,7 @@ async function validateFileSize(
   if (stats.size > maxBytes) {
     throw new Error(
       `${fileType} too large: ${(stats.size / (1024 * 1024)).toFixed(2)}MB ` +
-      `(max: ${maxSizeMB}MB)`
+        `(max: ${maxSizeMB}MB)`,
     );
   }
 }
@@ -912,7 +974,8 @@ function buildTagsForFile(srcRelative: string, projectName: string): string[] {
   const tags = [projectName];
 
   if (file === "readme.md") tags.push("setup", "guide");
-  if (file === "agents.md" || file === "claude.md") tags.push("rules", "standards");
+  if (file === "agents.md" || file === "claude.md")
+    tags.push("rules", "standards");
   if (file.includes("improvement")) tags.push("roadmap", "planning");
   if (file.includes("summary")) tags.push("summary", "overview");
   if (file.includes("reference")) tags.push("reference", "cheatsheet");
@@ -928,12 +991,14 @@ function inferStatus(srcRelative: string): string {
 
 function relativePathToSafeMarkdownName(rel: string): string {
   const noExt = rel.replace(/\.md$/i, "");
-  return noExt
-    .replace(/^[.][/\\]?/, "")
-    .replace(/[\\/]+/g, "-")
-    .replace(/[^a-zA-Z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "") + ".md";
+  return (
+    noExt
+      .replace(/^[.][/\\]?/, "")
+      .replace(/[\\/]+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") + ".md"
+  );
 }
 
 function relativePathToSafeFileName(rel: string): string {
@@ -952,7 +1017,10 @@ function normalizeRelativePath(p: string): string {
   return p.replace(/\\/g, "/").replace(/^.\//, "");
 }
 
-function shouldExclude(rel: string, excludePatterns: readonly string[]): boolean {
+function shouldExclude(
+  rel: string,
+  excludePatterns: readonly string[],
+): boolean {
   const normalized = normalizeRelativePath(rel);
 
   for (const pattern of excludePatterns) {
