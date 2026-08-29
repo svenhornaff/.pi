@@ -1100,3 +1100,29 @@ Skipped for now per PO direction: LLMHub live-verification items (opus-4.6 avail
 9. **New, found via the usage-report script.** The `compat.cacheControlFormat` fix on LLMHub Claude models only affects sessions going forward — every historical `llmhub/*` session still shows `cacheRead: 0`. Once the LLMHub budget cap resets and a real session runs, re-check with `python3 ~/.pi/scripts/session-usage-report.py --include-archives` for a non-zero `cacheRead` on a `llmhub/*` row — this is now the concrete, scriptable version of the previously-parked "verify LLMHub caching end-to-end" item.
 7. **Revisit LLMHub Claude compat flags for any newly-added model** — the pattern is now established (check `~/.pi/llmhub-model-pricing.md` first, add `compat.cacheControlFormat: "anthropic"` for LLMHub Claude models, never carry a cost estimate across model tiers without checking the catalog).
 8. **Monitor whether `openrouter/openai/gpt-4.1-mini` as the `contextPrune` summarizer stays reliable.** Not expected to need action — hosted models don't have local-Ollama's load/latency variability — but if the same fallback-warning pattern ever reappears, check the OpenRouter provider's own status page before assuming it's another flaky-summarizer issue.
+10. ~~Add `cache-warm` (npm, `luongnv89/pi-extensions`) as a direct hedge against the exact prompt-cache-TTL-expiry failure mode described in `prompt-cache-analysis.md`.~~ ✅ **Done 2026-08-29.** See Implementation log.
+
+---
+
+## Implementation log — 2026-08-29: `cache-warm` extension added
+
+**Found:** `prompt-cache-analysis.md` documents a real incident where a session's prompt cache went cold mid-run (a slow turn or idle gap exceeding the provider's short cache TTL), causing every subsequent turn to be billed as a full cache miss instead of a cache hit. The fix applied earlier (`compat.cacheControlFormat: "anthropic"`) makes caching *possible*; it does nothing to stop the cache from expiring between turns in the first place.
+
+**Verified before installing:** cloned `luongnv89/pi-extensions` (GitHub) to confirm the `cache-warm` extension is real, current, and does what it claims — not just taking the description at face value:
+- MIT licensed, part of a 12-extension collection with its own test suite (`extensions/cache-warm/test/cache-warm.test.mjs`).
+- README confirms: sends a tiny hidden `display: false` ping when the remaining cache TTL drops under 60s and the session is idle; rate-limited to 12 pings/hour by default; auto-stops after 30 minutes idle (configurable, `/cache-warm duration`); reports honest metrics (`attempts`, `refreshes`, `likely avoided misses`, `estimated net USD saved`, using real per-model pricing where known, `N/A` otherwise — not a fabricated `$0`).
+- Distinct from `timestamp-pi` (same author's collection) which only *displays* a cache countdown and never sends keep-alive traffic — confirmed we installed the one that actually acts, not just the one that shows a clock.
+
+**Done:**
+```bash
+cd ~/.pi/agent && pi install npm:cache-warm
+```
+Added to `packages` in `agent/settings.json` alongside `pi-web-access` and `pi-condense`.
+
+**Verified:**
+- `pi list --approve` shows `npm:cache-warm` installed under `~/.pi/agent/npm/node_modules/cache-warm`.
+- `~/.pi/scripts/smoke-test-extensions.sh`: first run showed 8/9 (one transient failure on the credential-read check, reproduced standalone and confirmed to be model-wording variance unrelated to `cache-warm`); rerun immediately after: **9/9 passed**, no regression from the new package.
+- `pi -p` sanity checks with the model loaded alongside `cache-warm` continued to work normally (plain response, no errors, no hang).
+- Slash commands (`/cache-warm status`, and pre-existing `/pruner status`) produce no output under `-p`/non-interactive mode — confirmed this is a pre-existing pi limitation (slash commands are TUI-only), not a `cache-warm`-specific issue, so live metrics (`/cache-warm status`/`metrics`) should be checked interactively in the TUI, not via `-p`.
+
+**Note for future reference:** because pings enter the model's context and the reply can't be guaranteed fully invisible, if a future audit sees an unexplained tiny extra turn in a session transcript with a `#w <iso>-<id>` marker, that is `cache-warm`, not a bug.

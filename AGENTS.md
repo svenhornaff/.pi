@@ -96,6 +96,12 @@ python3 -c "import json; json.load(open('web-search.json'))"
   local Ollama model here causes constant "summarizer failing, falling
   back to session model" warnings and defeats the point of a cheap
   summarizer. Prefer a cheap hosted model.
+- `cache-warm` (npm package, not a local file in `agent/extensions/`) —
+  keep-alive pings that stop a warm prompt cache from going cold between
+  turns. On by default; do not disable it globally without a specific
+  reason — it directly hedges the failure mode in
+  `prompt-cache-analysis.md`. If it ever needs disabling for a session,
+  prefer `/cache-warm off` over removing the package.
 - `web-search.json` `searchRouting` — the cheap, sequential, SearXNG-first
   default for everyday queries. Do not change this back to a multi-provider
   fan-out as the *default*; use the `/high-stakes-web-research` prompt

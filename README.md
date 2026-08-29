@@ -69,6 +69,15 @@ cd searxng && docker compose up -d
   `compat.cacheControlFormat: "anthropic"` in `models.json` to actually use
   provider prompt caching. This was *not* the default and its absence
   produced a real, expensive incident — see `prompt-cache-analysis.md`.
+- **Cache keep-alive**: [`cache-warm`](https://www.npmjs.com/package/cache-warm)
+  (npm, `luongnv89/pi-extensions`) sends a tiny hidden ping shortly before
+  the provider's cache TTL expires so an idle gap or a slow turn doesn't
+  cause a cold-cache miss on the next real message — the exact failure
+  mode described in `prompt-cache-analysis.md`. On by default, rate-limited
+  to 12 pings/hour, and auto-stops after 30 minutes idle so a forgotten
+  session doesn't bill overnight. Tune with `/cache-warm duration <Nm|Nh|forever>`,
+  disable with `/cache-warm off`, inspect with `/cache-warm status` /
+  `/cache-warm metrics`.
 - **Web search** defaults to a cheap, sequential, SearXNG-first routing
   policy (`web-search.json` → `searchRouting`) for everyday queries. For
   research that genuinely warrants full multi-provider coverage, use the

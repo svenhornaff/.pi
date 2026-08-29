@@ -94,6 +94,7 @@
   },
   "packages": [
     "npm:pi-web-access",
-    "npm:pi-condense@2.9.1"
+    "npm:pi-condense@2.9.1",
+    "npm:cache-warm"
   ]
 }
