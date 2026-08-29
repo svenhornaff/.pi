@@ -168,6 +168,7 @@ export default function obsidianSyncExtension(pi: ExtensionAPI) {
         ].join(" | ");
 
         ctx.ui.setStatus?.(statusKey, `💎 ${summary}`);
+        setTimeout(() => ctx.ui.setStatus?.(statusKey, undefined), 5000);
 
         if (result.errors.length > 0) {
           ctx.ui.notify(
@@ -188,21 +189,19 @@ export default function obsidianSyncExtension(pi: ExtensionAPI) {
       } catch (error: unknown) {
         const message = formatError("Obsidian sync failed", error);
         ctx.ui.setStatus?.(statusKey, "💎 Sync failed");
+        setTimeout(() => ctx.ui.setStatus?.(statusKey, undefined), 5000);
         ctx.ui.notify(message, "error");
         return message;
       }
     },
   });
 
-  pi.on("session_start", async (_event, ctx) => {
-    const settings = getEffectiveSettings(ctx);
-    if (!settings.vaultPath || !settings.vaultPath.trim()) {
-      ctx.ui.setStatus?.("obsidian-sync", "💎 /obsidian — vault not configured (see docs/obsidian-sync-guide.md)");
-    } else {
-      const vaultName = path.basename(settings.vaultPath);
-      ctx.ui.setStatus?.("obsidian-sync", `💎 /obsidian → ${vaultName}`);
-    }
-  });
+  // No persistent footer status line on session_start (removed 2026-08-29 as
+  // part of the footer decluttering pass — a permanent idle "💎 /obsidian →
+  // <vault>" line was one of several one-extension-per-line status entries
+  // that pushed the footer well past a readable size; sync-in-progress and
+  // sync-result status above still show transiently and self-clear after 5s.
+  // See ~/.pi/setup-refactor-plan.md.)
 }
 
 /* =========================
@@ -724,7 +723,7 @@ function upsertFrontmatter(
   return `${serializeFrontmatter(mergedMeta)}\n${mergedBody}`;
 }
 
-function parseFrontmatter(content: string): { data: Record<string, any>; body: string } {
+function parseFrontmatter(content: string): { data: Record<string, unknown>; body: string } {
   const trimmed = content.trimStart();
   if (!trimmed.startsWith("---\n")) {
     return { data: {}, body: content };
@@ -738,7 +737,7 @@ function parseFrontmatter(content: string): { data: Record<string, any>; body: s
   const fmText = trimmed.slice(4, end);
   const body = trimmed.slice(end + 5);
 
-  const data: Record<string, any> = {};
+  const data: Record<string, unknown> = {};
   for (const line of fmText.split("\n")) {
     const idx = line.indexOf(":");
     if (idx === -1) continue;
@@ -761,7 +760,7 @@ function parseFrontmatter(content: string): { data: Record<string, any>; body: s
   return { data, body };
 }
 
-function serializeFrontmatter(data: Record<string, any>): string {
+function serializeFrontmatter(data: Record<string, unknown>): string {
   const lines: string[] = ["---"];
 
   const orderedKeys = [

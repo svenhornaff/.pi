@@ -167,7 +167,8 @@ export default function (pi: ExtensionAPI) {
 			if (/^(?:sudo\s+)?(?:cp|mv|install|truncate)\b/.test(trimmed)) {
 				const tokens = trimmed.split(/\s+/).filter((t) => !t.startsWith("-"));
 				const last = tokens[tokens.length - 1];
-				if (last && !/^(?:cp|mv|install|truncate|sudo)$/.test(last)) targets.push(last);
+				if (last && !/^(?:cp|mv|install|truncate|sudo)$/.test(last))
+					targets.push(last);
 			}
 		}
 
@@ -204,7 +205,10 @@ export default function (pi: ExtensionAPI) {
 			if (!matchedTarget) return undefined;
 
 			if (ctx.hasUI) {
-				ctx.ui.notify(`Blocked bash command writing to a protected path (target: "${matchedTarget}")`, "warning");
+				ctx.ui.notify(
+					`Blocked bash command writing to a protected path (target: "${matchedTarget}")`,
+					"warning",
+				);
 			}
 			return {
 				block: true,

@@ -17,9 +17,9 @@ Top priorities (original pass):
 1. **P0 — Restore cost controls:** `pi-condense` is not installed/enabled, `contextPrune` is absent, `showCacheMissNotices` is absent, and LLMHub models still have zero cost and no Anthropic cache-control compat flags. ✅ **Resolved** — see Phase 2/3 implementation log below.
 2. **P0 — Reconcile model config:** `models.json` is much smaller than the documented intended setup and contains stale/mis-scaled OpenRouter manual entries plus zero-cost LLMHub entries. ✅ **Resolved** — OpenRouter now catalogue-backed, LLMHub removed from `enabledModels`.
 3. **P1 — Refactor global extensions:** multiple global extensions still import old `@mariozechner/*` package names and use stale event names (`session_switch`, `session_fork`) not present in current Pi docs. ✅ **Resolved 2026-08-29 (re-audit)** — see "Re-audit findings" and Phase 4 implementation log.
-6. **P0 — Prompt caching for LLMHub Claude models:** `prompt-cache-analysis.md` documented a real ~€275, 235-turn session with zero `cacheRead`/`cacheWrite` because `llmhub/claude-sonnet-4.6` was missing `compat.cacheControlFormat: "anthropic"` and had `cost: 0` (invisible spend). 🟡 **Config fixed 2026-08-29**, brought back into `enabledModels` with real costs and the caching flag — but **live verification is currently blocked** because the LLMHub project has hit its monthly budget limit (confirmed via direct API call, HTTP 429, unrelated to pi config). Re-verify once quota resets.
-4. **P1 — Decide web-search default policy:** current `web-search.json` is optimized for high-stakes multi-provider coverage, but this makes every ordinary web search fan out across OpenAI, Exa, Brave, Tavily, and SearXNG. 🔴 **Still open** — see Phase 5.
-5. **P2 — Clean project-local MCP drift:** `pi-mcp-adapter` is installed only under `~/.pi/agent/.pi`, but no `mcp.json` exists; caches are stale. 🔴 **Still open** — see Phase 7.
+4. **P0 — Prompt caching for LLMHub Claude models:** `prompt-cache-analysis.md` documented a real ~€275, 235-turn session with zero `cacheRead`/`cacheWrite` because `llmhub/claude-sonnet-4.6` was missing `compat.cacheControlFormat: "anthropic"` and had `cost: 0` (invisible spend). 🟡 **Config fixed 2026-08-29**, brought back into `enabledModels` with real costs and the caching flag — but **live verification is currently blocked** because the LLMHub project has hit its monthly budget limit (confirmed via direct API call, HTTP 429, unrelated to pi config). Re-verify once quota resets.
+5. **P1 — Decide web-search default policy:** current `web-search.json` is optimized for high-stakes multi-provider coverage, but this makes every ordinary web search fan out across OpenAI, Exa, Brave, Tavily, and SearXNG. 🔴 **Still open** — see Phase 5.
+6. **P2 — Clean project-local MCP drift:** `pi-mcp-adapter` is installed only under `~/.pi/agent/.pi`, but no `mcp.json` exists; caches are stale. 🔴 **Still open** — see Phase 7.
 
 ---
 
@@ -97,7 +97,7 @@ All three fixes were verified with smoke tests: `pi -p --model openai-codex/gpt-
 ### Pi core
 
 | Item | Current state |
-|---|---|
+| --- | --- |
 | Pi CLI | `0.84.4` |
 | Global settings | `~/.pi/agent/settings.json` |
 | Global package list | only `npm:pi-web-access` |
@@ -163,7 +163,7 @@ Issues found at the time:
 Across existing session logs:
 
 | Model | Turns | Input | Cache read | Cache write | Logged cost |
-|---|---:|---:|---:|---:|---:|
+| --- | ---: | ---: | ---: | ---: | ---: |
 | `llmhub/claude-sonnet-4.6` | 2911 | 858,095,724 | 0 | 0 | 0 |
 | `llmhub/claude-opus-4.6` | 842 | 133,223,288 | 0 | 0 | 0 |
 | `openai-codex/gpt-5.5` | 786 | 3,310,457 | 72,955,904 | 0 | 60.21 |
@@ -229,7 +229,7 @@ Concerns found in original pass (✅ **all fixed 2026-08-29, see Implementation 
 ## Criticality analysis
 
 | Priority | Area | Finding | Risk | Recommended action | Status |
-|---|---|---|---|---|---|
+| --- | --- | --- | --- | --- | --- |
 | P0 | Cost visibility | LLMHub models have zero costs; previous docs claim costs were fixed, but live `models.json` still has zeros. | High spend can remain invisible. | Fill verified per-million-token costs or remove expensive LLMHub models from `enabledModels` until verified. | ✅ Removed from `enabledModels`; provider kept for manual use only |
 | P0 | Prompt caching | LLMHub Claude models lack `compat.cacheControlFormat: "anthropic"`. | Stable prompt prefixes are reprocessed at full input cost — confirmed to have cost ~€275 in one real 235-turn session with zero cache reuse (see `prompt-cache-analysis.md`). | Add compat flags for LLMHub Claude models if gateway accepts Anthropic `cache_control`; verify with live cacheRead/cacheWrite. | 🟡 **Config fixed 2026-08-29** — `llmhub/claude-sonnet-4.6` (+ `4.5`, `claude-opus-4.6`) now has `compat.cacheControlFormat: "anthropic"` and real per-model `cost` fields, and is back in `enabledModels`. Cost figures cross-checked against the full LLMHub catalog (`~/.pi/llmhub-model-pricing.md`, added 2026-08-29): `claude-sonnet-4.6` confirmed correct, `claude-sonnet-4.5` corrected (was wrongly carrying 4.6's rate), `gpt-5` filled in from catalog, `claude-opus-4.6` flagged as **not present in the catalog at all** — may not be a real offering on this tenant. **Live end-to-end verification blocked**: the LLMHub project has hit its **monthly budget limit** (HTTP 429 on every model, confirmed via direct curl, unrelated to this config) — must re-verify `cacheRead`/`cacheWrite` show non-zero on a real session once quota resets. See Implementation log. |
 | P0 | Context growth | `pi-condense` is not installed/enabled; `contextPrune` absent; no prune markers in sessions. | Long tool-heavy sessions grow unbounded and compound cost. | Install/enable `pi-condense`; use a cheap summarizer model; verify `/pruner status`. | ✅ Installed (`2.9.1`), enabled. Summarizer model switched **again** 2026-08-29 from `ollama/qwen3:4b-instruct` → `openrouter/openai/gpt-4.1-mini` after repeated "summarizer failing, using session model" fallback warnings in real use; new model verified live (5 real summarization calls, no fallback, ~$0.002 total). |
@@ -414,9 +414,9 @@ import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 
 Applied across all 10 files in `~/.pi/agent/extensions/*.ts` via `sed` (mechanical rename, then verified `grep -rn mariozechner *.ts` returns no code matches). Also fixed a related issue not originally scoped here: `welcome-dashboard.ts` had a **hardcoded runtime path** (`readFileSync("/opt/homebrew/lib/node_modules/@mariozechner/pi-coding-agent/package.json")`) that pointed at a directory that had been deleted entirely — this was a live crash risk, not just a stale type import. Replaced with `execFileSync("pi", ["--version"])`, which survives future package renames/relocations.
 
-2. 🔴 **Still open** — Add required peer deps to `~/.pi/agent/extensions/package.json` only if runtime resolution needs them; Pi docs say core packages are provided, but local extension runtime imports should still be smoke-tested. (Smoke tests in item 6 passed without needing new peer deps, so no action was necessary this round, but this should be re-checked whenever a new extension is added.)
+1. 🔴 **Still open** — Add required peer deps to `~/.pi/agent/extensions/package.json` only if runtime resolution needs them; Pi docs say core packages are provided, but local extension runtime imports should still be smoke-tested. (Smoke tests in item 6 passed without needing new peer deps, so no action was necessary this round, but this should be re-checked whenever a new extension is added.)
 
-3. ✅ **DONE** — Replace stale events:
+2. ✅ **DONE** — Replace stale events:
 
 - remove `session_switch`
 - remove `session_fork`
@@ -425,7 +425,7 @@ Applied across all 10 files in `~/.pi/agent/extensions/*.ts` via `sed` (mechanic
 
 Confirmed against `docs/extensions.md` that `session_switch`/`session_fork` are not real Pi events — they were dead handlers in `status-footer.ts`, `tool-counter-widget.ts`, and `welcome-dashboard.ts`. Removed them; the existing `session_start` handlers in each file already perform the same reset/refresh logic and correctly cover `resume`/`fork` via `event.reason`, so no functional gap was introduced.
 
-4. ✅ **DONE 2026-08-29** — Expand guardrails:
+1. ✅ **DONE 2026-08-29** — Expand guardrails:
 
 `permission-gate.ts` now prompts/blocks (see file header comment for the full commented pattern list):
 
@@ -444,13 +444,13 @@ Each pattern now carries a human-readable `label` surfaced in both the confirmat
 - generic `*token*`/`*secret*`/`*credential*` filename patterns, wherever they occur
 - `.git/`, `node_modules/`, `auth.json` — unchanged from the original
 
-5. ✅ **DONE 2026-08-29** — Made `git-checkpoint.ts` cheaper:
+1. ✅ **DONE 2026-08-29** — Made `git-checkpoint.ts` cheaper:
 
 - caches the "is this a git repo" check (`git rev-parse --is-inside-work-tree`) once per session instead of implicitly re-discovering it via a failed `git stash create` every turn
 - added a `git status --porcelain` check and skips `git stash create` entirely when the working tree is already clean — there's nothing meaningful to checkpoint
 - net effect: a long read-only/non-git session now runs zero or one git subprocess total instead of one `git stash create` per turn
 
-6. ✅ **DONE** — Smoke-test extension loading:
+1. ✅ **DONE** — Smoke-test extension loading:
 
 ```bash
 pi -p --no-tools --model openai-codex/gpt-5.3-codex-spark "reply ok" --verbose
@@ -560,7 +560,7 @@ docker compose ps
 curl -fsS 'http://127.0.0.1:8888/search?q=pi&format=json' >/dev/null
 ```
 
-3. Update intentionally:
+1. Update intentionally:
 
 ```bash
 cd ~/.pi/searxng
@@ -848,6 +848,7 @@ All smoke tests passed with no runtime errors. Items 2, 4, 5, 6 of Phase 4 (peer
 Per PO direction, cross-referenced against `prompt-cache-analysis.md` (the incident writeup: ~€275, 235-turn session with **zero** `cacheRead`/`cacheWrite` because the model was missing `compat.cacheControlFormat: "anthropic"`, compounded by `cost: 0` making the spend invisible in the footer) and `Pi-Setup-Guide.md` (which documents the intended provider/model layout this machine should converge toward). The model had been dropped from `enabledModels` entirely in an earlier pass rather than fixed — this closes that gap properly instead of avoiding it.
 
 **Research first** — confirmed via web search against LLMHub's own prefix-caching guide (`docs.llmhub.t-systems.net/guides/prefix-caching/`) that:
+
 - Anthropic/Claude models on LLMHub use `"cache_control": {"type": "ephemeral"}` breakpoints — exactly what pi's `compat.cacheControlFormat: "anthropic"` flag causes it to emit.
 - Open-source T-Cloud models (`otc-internal` provider, GLM/Llama/gpt-oss) use a **different** mechanism (`save_cache`/`cache_salt`) that pi does not support at all — confirming this fix is correctly scoped to the LLMHub Claude models only, not the whole fleet.
 - Prefixes under ~1,000 tokens may not cache, and cache entries are short-lived (a few minutes) — relevant context for interpreting `cacheRead` numbers once verification is possible.
@@ -908,7 +909,7 @@ PO supplied the full LLMHub pricing/rate-limit catalog (35 models, from LLMHub's
 Cross-checking the catalog against the **already-configured** `llmhub/*` models in `models.json` surfaced that the "cost figures carried over" heuristic used in the previous pass (same-tier estimate) was **wrong in one case and simply unfilled in another**:
 
 | Model | Had before | Catalog says | Verdict |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `llmhub/gpt-5` | 0 / 0 (unconfirmed placeholder) | 1.20 / 9.55 | **Was a placeholder, now filled from catalog** |
 | `llmhub/claude-sonnet-4.5` | 7.28 / 27.30 (wrongly carried over from 4.6's rate) | 2.97 / 14.85 | **Was materially wrong — 4.5 Sonnet and Sonnet 4.6 are priced differently on LLMHub; corrected** |
 | `llmhub/claude-sonnet-4.6` | 7.28 / 27.30 | 7.28 / 27.30 | **Confirmed correct**, no change |
@@ -1074,7 +1075,7 @@ Final verified run: `9 passed, 0 failed`, exit code 0.
 ## Decision log
 
 | Decision | Recommendation |
-|---|---|
+| --- | --- |
 | Daily default model | Prefer a cheaper/faster model; avoid Opus high-thinking as default unless intentional. |
 | Long-session cost control | Install/enable `pi-condense`; keep native compaction as safety net. |
 | LLMHub Claude usage | Block or discourage until costs and cache forwarding are verified. |
@@ -1097,9 +1098,9 @@ Skipped for now per PO direction: LLMHub live-verification items (opus-4.6 avail
 4. ~~Add a lightweight extension smoke-test habit.~~ ✅ **Done 2026-08-29** — `~/.pi/scripts/smoke-test-extensions.sh`. First real run caught and fixed a genuine security bypass in `protected-paths.ts` (bash-redirection writes weren't gated) plus a counting bug in the script itself. See Implementation log.
 5. ~~Session retention (Phase 8).~~ ✅ **Done 2026-08-29** — `~/.pi/scripts/archive-old-sessions.sh` + `~/.pi/scripts/session-usage-report.py`. First real run archived 79 sessions/41M; usage report independently reconfirmed the prompt-caching P0 finding at scale. See Implementation log.
 6. **Consider sandboxing for the 3 trusted projects** (`bulliexplorer`, `doc-manager`, `idp-docs`) if any of them process untrusted external input (issues, PRs, fetched web content) — project trust is not a sandbox, and `pi-web-access` fetches arbitrary URLs globally. Structural work, not an extension tweak; lowest urgency of the open items but worth tracking. ◀ **Only item remaining from the recommended-next-steps list.**
-9. **New, found via the usage-report script.** The `compat.cacheControlFormat` fix on LLMHub Claude models only affects sessions going forward — every historical `llmhub/*` session still shows `cacheRead: 0`. Once the LLMHub budget cap resets and a real session runs, re-check with `python3 ~/.pi/scripts/session-usage-report.py --include-archives` for a non-zero `cacheRead` on a `llmhub/*` row — this is now the concrete, scriptable version of the previously-parked "verify LLMHub caching end-to-end" item.
-7. **Revisit LLMHub Claude compat flags for any newly-added model** — the pattern is now established (check `~/.pi/llmhub-model-pricing.md` first, add `compat.cacheControlFormat: "anthropic"` for LLMHub Claude models, never carry a cost estimate across model tiers without checking the catalog).
-8. **Monitor whether `openrouter/openai/gpt-4.1-mini` as the `contextPrune` summarizer stays reliable.** Not expected to need action — hosted models don't have local-Ollama's load/latency variability — but if the same fallback-warning pattern ever reappears, check the OpenRouter provider's own status page before assuming it's another flaky-summarizer issue.
+7. **New, found via the usage-report script.** The `compat.cacheControlFormat` fix on LLMHub Claude models only affects sessions going forward — every historical `llmhub/*` session still shows `cacheRead: 0`. Once the LLMHub budget cap resets and a real session runs, re-check with `python3 ~/.pi/scripts/session-usage-report.py --include-archives` for a non-zero `cacheRead` on a `llmhub/*` row — this is now the concrete, scriptable version of the previously-parked "verify LLMHub caching end-to-end" item.
+8. **Revisit LLMHub Claude compat flags for any newly-added model** — the pattern is now established (check `~/.pi/llmhub-model-pricing.md` first, add `compat.cacheControlFormat: "anthropic"` for LLMHub Claude models, never carry a cost estimate across model tiers without checking the catalog).
+9. **Monitor whether `openrouter/openai/gpt-4.1-mini` as the `contextPrune` summarizer stays reliable.** Not expected to need action — hosted models don't have local-Ollama's load/latency variability — but if the same fallback-warning pattern ever reappears, check the OpenRouter provider's own status page before assuming it's another flaky-summarizer issue.
 10. ~~Add `cache-warm` (npm, `luongnv89/pi-extensions`) as a direct hedge against the exact prompt-cache-TTL-expiry failure mode described in `prompt-cache-analysis.md`.~~ ✅ **Done 2026-08-29.** See Implementation log.
 
 ---
@@ -1109,17 +1110,21 @@ Skipped for now per PO direction: LLMHub live-verification items (opus-4.6 avail
 **Found:** `prompt-cache-analysis.md` documents a real incident where a session's prompt cache went cold mid-run (a slow turn or idle gap exceeding the provider's short cache TTL), causing every subsequent turn to be billed as a full cache miss instead of a cache hit. The fix applied earlier (`compat.cacheControlFormat: "anthropic"`) makes caching *possible*; it does nothing to stop the cache from expiring between turns in the first place.
 
 **Verified before installing:** cloned `luongnv89/pi-extensions` (GitHub) to confirm the `cache-warm` extension is real, current, and does what it claims — not just taking the description at face value:
+
 - MIT licensed, part of a 12-extension collection with its own test suite (`extensions/cache-warm/test/cache-warm.test.mjs`).
 - README confirms: sends a tiny hidden `display: false` ping when the remaining cache TTL drops under 60s and the session is idle; rate-limited to 12 pings/hour by default; auto-stops after 30 minutes idle (configurable, `/cache-warm duration`); reports honest metrics (`attempts`, `refreshes`, `likely avoided misses`, `estimated net USD saved`, using real per-model pricing where known, `N/A` otherwise — not a fabricated `$0`).
 - Distinct from `timestamp-pi` (same author's collection) which only *displays* a cache countdown and never sends keep-alive traffic — confirmed we installed the one that actually acts, not just the one that shows a clock.
 
 **Done:**
+
 ```bash
 cd ~/.pi/agent && pi install npm:cache-warm
 ```
+
 Added to `packages` in `agent/settings.json` alongside `pi-web-access` and `pi-condense`.
 
 **Verified:**
+
 - `pi list --approve` shows `npm:cache-warm` installed under `~/.pi/agent/npm/node_modules/cache-warm`.
 - `~/.pi/scripts/smoke-test-extensions.sh`: first run showed 8/9 (one transient failure on the credential-read check, reproduced standalone and confirmed to be model-wording variance unrelated to `cache-warm`); rerun immediately after: **9/9 passed**, no regression from the new package.
 - `pi -p` sanity checks with the model loaded alongside `cache-warm` continued to work normally (plain response, no errors, no hang).
@@ -1134,12 +1139,14 @@ Added to `packages` in `agent/settings.json` alongside `pi-web-access` and `pi-c
 **Requested:** `pi-lens`, `rpiv-ask-user-question`, `statusline-pi`, `Plannotator`, `advisor-pi` — plus a general recommendation for anything else that would round out a top-tier development harness.
 
 **Verified before installing** (all five, not taken on faith):
+
 - Resolved exact npm package names via the npm registry search API, since two of the requested names were shorthand for scoped packages: `rpiv-ask-user-question` → `@juicesharp/rpiv-ask-user-question`, `Plannotator` → `@plannotator/pi-extension`.
 - For each: checked npm registry metadata (license, maintainer, last-publish date — all published within the last ~2 days to 3 weeks of this entry, all MIT or MIT/Apache dual-licensed), then cloned/read the actual README from GitHub rather than trusting the npm description alone.
 - Confirmed `pi-lens` and `@plannotator/pi-extension` ship native-dependent packages (`@ast-grep/napi`, `node-pty`) with prebuilt `darwin-arm64` binaries already present after install — no compiler/build step needed on this machine.
 - Confirmed `npm install-scripts ls` (run from `~/.pi/agent`, where pi's own install lives) shows no unreviewed install scripts pending.
 
 **Done:**
+
 ```bash
 cd ~/.pi/agent
 pi install npm:pi-lens
@@ -1148,6 +1155,7 @@ pi install npm:statusline-pi
 pi install npm:@plannotator/pi-extension
 pi install npm:advisor-pi
 ```
+
 All five auto-registered into `packages` in `agent/settings.json` by `pi install`.
 
 **Conflict found and resolved:** `statusline-pi` duplicates and supersedes our own `agent/extensions/status-footer.ts` (repo/branch/model/context, plus CPU/MEM, tokens/sec, PR number, live cost estimate — a superset). Running both would fight over the footer. Retired ours: renamed to `status-footer.ts.disabled-superseded-by-statusline-pi` rather than deleted, kept for reference/rollback. Backed up both the pre-change `settings.json` and the original `status-footer.ts` to `~/.pi/backups/20260829-new-extensions/` first.
@@ -1155,6 +1163,7 @@ All five auto-registered into `packages` in `agent/settings.json` by `pi install
 **Cost posture checked:** `advisor-pi` makes real, separately-billed model calls. Read its source directly (not just the README) to confirm the actual defaults rather than assuming: `openai-codex/gpt-5.6-sol`, `high` thinking, **`maxUses: 5` per session branch**, `short` cache retention. These defaults are already conservative — left unchanged rather than overridden.
 
 **Verified:**
+
 - `pi list --approve`: all 8 packages (3 previous + 5 new) show installed under the agent's npm-managed extensions directory.
 - `~/.pi/scripts/smoke-test-extensions.sh`: **9/9 passed**, no regression from adding five extensions or retiring `status-footer.ts`.
 - `pi -p --model openrouter/anthropic/claude-sonnet-5 "say hello"` in a clean `/tmp` scratch dir with all 8 packages active: clean response, no crash, no error output.
@@ -1169,6 +1178,7 @@ All five auto-registered into `packages` in `agent/settings.json` by `pi install
 ## Implementation log — 2026-08-29: `protected-paths.ts` bash-guard rewrite (false-positive/false-negative fix)
 
 **Found (this session, self-inflicted and confirmed repeatedly):** the previous bash-redirection check fired on any command whose *whole text* contained a protected-path substring, once *any* write-shaped token appeared anywhere in the command — not on whether that token was actually the write target. Concretely, this blocked:
+
 - `grep -n "node_modules" ...` (a pure read) — the word "install" and stray `>` from unrelated redirects elsewhere in the same multi-line command tripped the write-indicator regex.
 - `npm install-scripts ls` — "install" alone matched, with no actual file write happening.
 - `find . -iname "*.npmrc"` — blocked purely for containing the substring `.npmrc`, no write construct even needed once other lines in the batch had one.
@@ -1181,6 +1191,7 @@ Also found one false negative in the old `WRITE_INDICATORS` regex: a bare `>` in
 **Verified with an 18-case standalone test matrix** (`/tmp/test-guard3.mjs`, ported logic, not the real extension file, so iteration was safe) before touching the real file: 5 true-positive cases (writes to `.env`, `auth.json` via heredoc/`sed -i`/`cp`, `dd of=` to an SSH key, `cp` onto `settings.json` via both `~` and expanded-`$HOME` forms) and 13 true-negative cases (today's actual false positives verbatim, plus stderr-fd-dup, benign redirects, reads FROM a protected-looking filename, and a generic non-pi `settings.json` that must NOT be blocked) — all 18 passed before porting.
 
 **Ported and re-verified against the real extension:**
+
 - `pi -p` smoke test extended with a 9th/10th case (`does not block a read-only grep mentioning node_modules`) reproducing the exact session false positive as a permanent regression check.
 - Full suite: **10/10 passed** (previously 9/9; new case added, none broken).
 - Live re-run of the exact commands that were false-blocked earlier in this session (`grep -n node_modules ...`, `find . -iname "*.npmrc"`) — both now exit 0 normally.
@@ -1188,3 +1199,36 @@ Also found one false negative in the old `WRITE_INDICATORS` regex: a bare `>` in
 - `lsp_diagnostics` on the rewritten file: primary TypeScript check clean.
 
 **Scope note, left unchanged and documented in the file's own header:** this is still a regex/heuristic gate, not a sandbox. It does not defeat deliberate obfuscation (base64-encoded commands, env-var-assembled paths, unusual quoting). It exists to catch the common non-adversarial case — the same posture as `permission-gate.ts`. Reading FROM a protected-looking filename to write elsewhere (e.g. `cp secrets.yaml /tmp/out.txt`) is deliberately still allowed through this gate by design — only the destination is checked; exfiltration-shaped reads are `permission-gate.ts`'s network-egress patterns' concern, not this file's.
+
+---
+
+## Implementation log — 2026-08-29: footer decluttering (8 extensions -> statusline-pi + cache-warm)
+
+**Found:** after installing `pi-lens`, `statusline-pi`, `cache-warm`, and `advisor-pi` on top of the pre-existing `theme-cycler.ts` and `obsidian-sync.ts`, the footer had grown to **8 separate lines from 6 different extensions**, each independently calling `setStatus`/`setWidget` with no coordination:
+
+1. `pi-lens` — `pi-lens ✓ clean` / last-checked-file (2 lines)
+2. `statusline-pi` — cost / CPU+MEM / context tokens+percent+zone-emoji / tps / provider+model (1 line, itself a compact multi-metric line, the intended replacement for `status-footer.ts`)
+3. `obsidian-sync` (ours) — permanent `💎 /obsidian → <vault>` idle line, present every session regardless of any actual sync happening
+4. `theme-cycler` (ours) — permanent `🎨 <theme-name>` line
+5. `pi-condense` — `prune: ON · <before>-><after> (-N%) · think · gap · chain` line, duplicating the context-token info already shown by `statusline-pi`
+6. `cache-warm` — `warm <countdown> · <hits> · $<saved>` line
+7. `pi-lens` — `LSP Active: <servers>` (a 2nd, separate line from #1)
+8. `advisor-pi` — `advisor:<model> <thinking> <remaining-uses>` line, duplicating the model name already shown by `statusline-pi`
+
+**User's directive:** drop the theme indicator entirely, cut duplicated info, target max 2 lines.
+
+**Decided and applied (with explicit user sign-off via `ask_user_question` where a tradeoff existed, not just picked unilaterally):**
+
+- **`theme-cycler.ts`** (ours): removed the persistent `setStatus("theme", ...)` call and all 5 of its call sites entirely, plus a fully-dead `currentCtx` variable found while doing so (assigned in 4 places, read in none — pre-existing dead code unrelated to the footer, cleaned up in the same pass). The transient 3-second color-swatch widget on an actual theme switch is kept — it self-dismisses, so it isn't a permanent line.
+- **`obsidian-sync.ts`** (ours): removed the permanent idle-state `session_start` status line (`💎 /obsidian → <vault>` shown every session whether or not a sync ever ran). The in-progress/result/error status lines during an *actual* `/obsidian` sync are kept, but now self-clear via `setTimeout(... , 5000)` instead of staying up indefinitely. Also fixed two unrelated pre-existing `Record<string, any>` lint findings in `parseFrontmatter`/`serializeFrontmatter` (flagged by pi-lens's self-scan while editing this file) — narrowed to `Record<string, unknown>`, no behavior change, all call sites already used `??`/array-narrowing so the wider unknown type required no further changes.
+- **`pi-lens`**: added `~/.pi-lens/config.json` with `"widget": { "visible": false }` — a documented config key found by grepping the installed package's own source (`GLOBAL_NON_FLAG_CONFIG_SECTIONS` in `dist/index.js`), not a workaround. Findings still surface via turn-end nudges and the `lens_diagnostics` tool; only the permanent 2-line footer widget is hidden.
+- **`pi-condense`**: set `contextPrune.showPruneStatusLine: false` in `agent/settings.json`. **This file is one of `protected-paths.ts`'s own protected absolute paths** — per `AGENTS.md`'s explicit rule never to weaken that guard for convenience, this one-line change was handed to the user to apply by hand rather than bypassing the gate; confirmed applied before closing this entry.
+- **`cache-warm`** and **`advisor-pi`**: neither ships a display-only toggle — each ties its footer line to the same enable flag that activates the underlying feature/tool (confirmed by reading both extensions' source directly, not assumed from the README). Asked the user explicitly for both: kept `cache-warm`'s line (real-time TTL/hits/savings, changes turn-to-turn, judged worth the line) and explicitly chose to **keep `advisor-pi` enabled with its line rather than disable the tool** to save one line — recorded here as a deliberate tradeoff, not an oversight, so the actual footer is slightly over the strict 2-line target by design (statusline-pi + cache-warm + advisor-pi = 3 lines; pi-lens's 2 lines and obsidian-sync/theme-cycler's permanent lines are the ones actually eliminated).
+
+**Verified:**
+
+- `lsp_diagnostics` (primary, error severity) on both edited files: clean.
+- Full smoke test: **10/10 passed**, no regressions from the extension edits.
+- All touched JSON (`settings.json`, `models.json`, `web-search.json`, the new `~/.pi-lens/config.json`) validated.
+
+**Net result:** permanent footer lines went from 8 (across 6 extensions, with real duplication — model name shown twice, context/token info shown twice) to 3 (`statusline-pi`, `cache-warm`, `advisor-pi`), each showing genuinely distinct information, with the `pi-condense`/`theme`/`obsidian` idle noise removed and `pi-lens`'s widget silenced at the source via its own config.

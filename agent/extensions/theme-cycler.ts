@@ -10,9 +10,14 @@
  *   /theme <name>   — Switch directly by name
  *
  * Features:
- *   - Status line shows current theme name with accent color
  *   - Color swatch widget flashes briefly after each switch
  *   - Auto-dismisses swatch after 3 seconds
+ *   - No persistent footer status line (removed 2026-08-29 as part of the
+ *     footer decluttering pass — the theme name is low-value chrome once
+ *     it's visible transiently in the swatch on every switch; keeping a
+ *     permanent "🎨 dark" line was one of several one-extension-per-line
+ *     status entries that pushed the footer well past a readable size.
+ *     See ~/.pi/setup-refactor-plan.md.)
  *
  * Usage: pi -e extensions/theme-cycler.ts -e extensions/minimal.ts
  */
@@ -22,14 +27,7 @@ import { truncateToWidth } from "@earendil-works/pi-tui";
 import { applyExtensionDefaults } from "./themeMap.ts";
 
 export default function (pi: ExtensionAPI) {
-	let currentCtx: ExtensionContext | undefined;
 	let swatchTimer: ReturnType<typeof setTimeout> | null = null;
-
-	function updateStatus(ctx: ExtensionContext) {
-		if (!ctx.hasUI) return;
-		const name = ctx.ui.theme.name;
-		ctx.ui.setStatus("theme", `🎨 ${name}`);
-	}
 
 	function showSwatch(ctx: ExtensionContext) {
 		if (!ctx.hasUI) return;
@@ -55,9 +53,9 @@ export default function (pi: ExtensionAPI) {
 						theme.fg("dim", block) +
 						" " +
 						theme.fg("muted", block);
-					const label = theme.fg("accent", " 🎨 ") + theme.fg("muted", ctx.ui.theme.name) + "  " + swatch;
+					const label = `${theme.fg("accent", " 🎨 ")}${theme.fg("muted", ctx.ui.theme.name)}  ${swatch}`;
 					const border = theme.fg("borderMuted", "─".repeat(Math.max(0, width)));
-					return [border, truncateToWidth("  " + label, width), border];
+					return [border, truncateToWidth(`  ${label}`, width), border];
 				},
 			}),
 			{ placement: "belowEditor" },
@@ -96,7 +94,6 @@ export default function (pi: ExtensionAPI) {
 		const result = ctx.ui.setTheme(theme.name);
 
 		if (result.success) {
-			updateStatus(ctx);
 			showSwatch(ctx);
 			ctx.ui.notify(`${theme.name} (${index + 1}/${themes.length})`, "info");
 		} else {
@@ -109,7 +106,6 @@ export default function (pi: ExtensionAPI) {
 	pi.registerShortcut("ctrl+shift+t", {
 		description: "Cycle theme forward",
 		handler: async (ctx) => {
-			currentCtx = ctx;
 			cycleTheme(ctx, 1);
 		},
 	});
@@ -117,7 +113,6 @@ export default function (pi: ExtensionAPI) {
 	pi.registerShortcut("ctrl+shift+q", {
 		description: "Cycle theme backward",
 		handler: async (ctx) => {
-			currentCtx = ctx;
 			cycleTheme(ctx, -1);
 		},
 	});
@@ -127,7 +122,6 @@ export default function (pi: ExtensionAPI) {
 	pi.registerCommand("theme", {
 		description: "Select a theme: /theme or /theme <name>",
 		handler: async (args, ctx) => {
-			currentCtx = ctx;
 			if (!ctx.hasUI) return;
 
 			const themes = getThemeList(ctx);
@@ -136,7 +130,6 @@ export default function (pi: ExtensionAPI) {
 			if (arg) {
 				const result = ctx.ui.setTheme(arg);
 				if (result.success) {
-					updateStatus(ctx);
 					showSwatch(ctx);
 					ctx.ui.notify(`Theme: ${arg}`, "info");
 				} else {
@@ -157,7 +150,6 @@ export default function (pi: ExtensionAPI) {
 			const selectedName = selected.split(/\s/)[0];
 			const result = ctx.ui.setTheme(selectedName);
 			if (result.success) {
-				updateStatus(ctx);
 				showSwatch(ctx);
 				ctx.ui.notify(`Theme: ${selectedName}`, "info");
 			}
@@ -167,9 +159,7 @@ export default function (pi: ExtensionAPI) {
 	// --- Session init ---
 
 	pi.on("session_start", async (_event, ctx) => {
-		currentCtx = ctx;
 		applyExtensionDefaults(import.meta.url, ctx);
-		updateStatus(ctx);
 	});
 
 	pi.on("session_shutdown", async () => {
