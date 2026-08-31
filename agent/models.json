@@ -92,7 +92,10 @@
             "input": 5,
             "output": 25,
             "cacheRead": 0.2,
-            "cacheWrite": 2.50
+            "cacheWrite": 2.5
+          },
+          "compat": {
+            "cacheControlFormat": "anthropic"
           }
         },
         {

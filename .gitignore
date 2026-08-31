@@ -4,6 +4,8 @@ agent/models-store.json
 **/*.token
 **/*.secret
 **/*credentials*
+**/*-token.json
+agent/telecontext-token.json
 
 # --- Session logs (can contain file contents, command output, fetched web content) ---
 agent/sessions/
@@ -23,6 +25,7 @@ agent/extensions/package-lock.json
 mcp-cache.json
 mcp-npx-cache.json
 agent/.update-check
+.update-check
 
 # --- SearXNG runtime data (config is tracked, data/state is not) ---
 searxng/data/
