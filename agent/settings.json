@@ -1,6 +1,6 @@
 {
   "obsidian": {
-    "vaultPath": "/Users/brooklyn/Documents/obsidian",
+    "vaultPath": "/Users/A94984797/Documents/ObsidianVault",
     "_vaultPath_note": "Set this to the absolute path of your Obsidian vault. Alternatively: export OBSIDIAN_VAULT_PATH=/path/to/vault. See docs/obsidian-sync-guide.md.",
     "projectFolder": "PROJECTS",
     "attachmentsFolder": "attachments",
@@ -20,25 +20,23 @@
     ],
     "rewriteImageLinks": true
   },
-  "defaultProvider": "openrouter",
-  "defaultModel": "anthropic/claude-sonnet-5",
+  "defaultProvider": "otc-internal",
+  "defaultModel": "GLM-5.2",
   "defaultThinkingLevel": "medium",
-  "quietStartup": true,
   "lastChangelogVersion": "0.84.4",
   "theme": "dark",
   "hideThinkingBlock": false,
-  "enabledModels": [
-    "openrouter/anthropic/claude-sonnet-5",
-    "openrouter/z-ai/glm-5.3",
-    "openrouter/moonshotai/kimi-k3",
-    "openrouter/deepseek/deepseek-v4-pro",
-    "openai-codex/gpt-5.6-luna",
-    "openai-codex/gpt-5.6-terra",
-    "openai-codex/gpt-5.6-sol",
-    "ollama/qwen3:4b-instruct",
-    "llmhub/claude-sonnet-4.6"
-  ],
+  "quietStartup": true,
   "showCacheMissNotices": true,
+  "enabledModels": [
+    "ollama/*",
+    "otc-internal/*",
+    "openrouter/anthropic/claude-sonnet-4.6",
+    "openrouter/anthropic/claude-sonnet-5",
+    "openrouter/moonshotai/kimi-k2.6",
+    "ai-engineer/*",
+    "llmhub/*"
+  ],
   "compaction": {
     "enabled": true,
     "reserveTokens": 16384,
@@ -53,10 +51,20 @@
       "maxRetryDelayMs": 60000
     }
   },
+  "packages": [
+    "npm:pi-web-access",
+    "npm:pi-condense@2.9.1",
+    "npm:cache-warm",
+    "npm:pi-lens",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:statusline-pi",
+    "npm:@plannotator/pi-extension",
+    "npm:advisor-pi"
+  ],
   "contextPrune": {
     "enabled": true,
     "showPruneStatusLine": false,
-    "summarizerModel": "openrouter/openai/gpt-4.1-mini",
+    "summarizerModel": "otc-internal/gpt-oss-120b",
     "summarizerThinking": "default",
     "pruneOn": "agent-message",
     "batchingMode": "turn",
@@ -92,14 +100,5 @@
     "budgetTurnDelta": null,
     "summarizerConcurrency": 2
   },
-  "packages": [
-    "npm:pi-web-access",
-    "npm:pi-condense@2.9.1",
-    "npm:cache-warm",
-    "npm:pi-lens",
-    "npm:@juicesharp/rpiv-ask-user-question",
-    "npm:statusline-pi",
-    "npm:@plannotator/pi-extension",
-    "npm:advisor-pi"
-  ]
+  "extensions": []
 }
