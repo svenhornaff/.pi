@@ -1232,3 +1232,84 @@ Also found one false negative in the old `WRITE_INDICATORS` regex: a bare `>` in
 - All touched JSON (`settings.json`, `models.json`, `web-search.json`, the new `~/.pi-lens/config.json`) validated.
 
 **Net result:** permanent footer lines went from 8 (across 6 extensions, with real duplication — model name shown twice, context/token info shown twice) to 3 (`statusline-pi`, `cache-warm`, `advisor-pi`), each showing genuinely distinct information, with the `pi-condense`/`theme`/`obsidian` idle noise removed and `pi-lens`'s widget silenced at the source via its own config.
+
+## Implementation log — 2026-08-31: portable fixes ported from `t-mac` branch
+
+**Found:** `main` had derived a `t-mac` branch earlier in the day for a
+different machine/user (different `otc-internal` provider config, different
+Obsidian vault path, different `trust.json`). A cross-branch assessment
+(`t-mac-upstream-assessment.md`) separated machine-identity divergence
+(not portable) from genuinely portable fixes made on `t-mac` that applied
+equally well to `main`'s own code.
+
+**Decided and applied, per the assessment's refactor plan (§5), smallest/safest first:**
+
+- **`.gitignore`**: added `**/*-token.json` and a root-level `.update-check`
+  pattern (existing rule only covered `agent/.update-check`). Closes two
+  gaps in the secrets/generated-file ignore coverage that had nothing to
+  do with `t-mac`'s specific machine. Verified: `git check-ignore -v
+  .update-check` and `git check-ignore -v agent/telecontext-token.json`
+  both matched the new rules (exit 0).
+- **`agent/extensions/obsidian-sync.ts`**: ported two logic fixes found on
+  `t-mac`, no machine dependency: (1) `resolveMarkdownSelection` now
+  expands `~` and resolves relative-to-`cwd` paths for explicit file args
+  via a new `expandTilde()` helper, instead of naively joining the raw
+  arg against `cwd` (previously silently dropped `~/...` or absolute
+  explicit-file args from the sync set); (2)
+  `relativePathToSafeMarkdownName` now strips leading `../` segments
+  before flattening a path into a safe filename, preventing a
+  `..`-prefixed or malformed name for files reached via a parent-relative
+  path. Verified: `lsp_diagnostics` clean on the file.
+- **`scripts/smoke-test-extensions.sh`**: (1) re-pinned the
+  `SMOKE_TEST_MODEL` fallback from `openai-codex/gpt-5.5` to `main`'s
+  actual `agent/settings.json` `defaultModel`
+  (`openrouter/anthropic/claude-sonnet-5`) — the *pattern* ported from
+  `t-mac`, but the value is `main`'s own, not `t-mac`'s
+  `otc-internal/GLM-5.2`; (2) loosened the two brittle regex checks (the
+  `reply ok` load checks and the force-push block-message check) to
+  tolerate normal phrasing/punctuation variance instead of requiring an
+  exact string match. Verified: ran the script twice — once with
+  `SMOKE_TEST_MODEL` unset (exercises the new default) and once with
+  `--model openai-codex/gpt-5.5` (exercises the override path) — **both
+  reached 10/10 passed, 0 failed.**
+- **`agent/models.json`**: ran the cache-compat-flag audit the assessment
+  called for — checked every `llmhub` entry with nonzero
+  `cacheRead`/`cacheWrite` pricing for `compat.cacheControlFormat`.
+  Result: `claude-sonnet-4.5`, `claude-sonnet-4.6`, and `claude-opus-4.6`
+  all already carry `"anthropic"` (inherited from the earlier incident
+  fix in `prompt-cache-analysis.md`); `gpt-5` has cache pricing but is
+  OpenAI (uses automatic prompt caching, not the Anthropic
+  `cache_control`-block mechanism, so the flag doesn't apply). **No gap
+  found — no file change needed.** Re-run this same check any time a new
+  Claude model entry is added.
+
+**Explicitly not ported** (per the assessment's §4): `agent/trust.json`,
+`agent/settings.json`'s `defaultProvider`/`defaultModel`/`enabledModels`/
+`contextPrune.summarizerModel`, `agent/models.json`'s `otc-internal`
+provider block and ollama/openrouter model-list changes, the Obsidian
+`vaultPath`, the `docs/` directory reorg, and both `harness-review-*.md`
+docs verbatim — all either machine-identity-specific or computed against
+a repo state `main` doesn't share. The process patterns from those docs
+(repeatable harness-review checklist, following up on open items,
+sandboxing-triage question) were noted as future optional work in the
+assessment (§3, §5 items 6–7) but not actioned in this pass.
+
+**Verified:**
+
+- `python3 -c "import json; json.load(...)"` clean for `agent/settings.json`,
+  `agent/models.json`, `web-search.json`.
+- `scripts/smoke-test-extensions.sh`: **10/10 passed** (both with the new
+  default model and with an explicit `--model` override).
+- `lsp_diagnostics` clean on `agent/extensions/obsidian-sync.ts`.
+- `git status --short`: only `.gitignore`, `agent/extensions/obsidian-sync.ts`,
+  `scripts/smoke-test-extensions.sh` modified, plus the new
+  `t-mac-upstream-assessment.md` — no secrets/sessions/backups staged.
+- `grep -n "apiKey" agent/models.json web-search.json`: only Keychain
+  references (`!security find-generic-password ...`), no raw keys —
+  unchanged by this pass since `models.json` needed no edit.
+
+**Net result:** `main` picked up 3 real portable fixes from `t-mac`
+(a `.gitignore` gap, two `obsidian-sync.ts` path-handling bugs, a more
+robust smoke test) plus one confirmed-clean audit (cache-compat flags),
+while every machine-identity-specific piece of `t-mac` stayed on that
+branch only, per the original separation requirement.

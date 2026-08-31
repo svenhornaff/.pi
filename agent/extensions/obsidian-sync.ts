@@ -456,7 +456,9 @@ async function runSync(
 
   // Only copy images that are actually referenced
   let copiedImages = 0;
-  if (!options.dryRun) {
+  if (options.dryRun) {
+    copiedImages = allReferencedImages.size;
+  } else {
     copiedImages = await copyReferencedImages(
       imageLookup,
       allReferencedImages,
@@ -464,8 +466,6 @@ async function runSync(
       settings.maxFileSizeMB,
       errors,
     );
-  } else {
-    copiedImages = allReferencedImages.size;
   }
 
   // Create index
@@ -510,7 +510,11 @@ function resolveMarkdownSelection(
   if (options.explicitFiles.length > 0) {
     return uniqueSorted(
       options.explicitFiles
-        .map((f) => normalizeRelativePath(f))
+        .map((f) => {
+          const expanded = expandTilde(f);
+          const absolute = path.resolve(cwd, expanded);
+          return normalizeRelativePath(path.relative(cwd, absolute));
+        })
         .filter((f) => fsSync.existsSync(path.join(cwd, f))),
     );
   }
@@ -993,12 +997,19 @@ function relativePathToSafeMarkdownName(rel: string): string {
   const noExt = rel.replace(/\.md$/i, "");
   return (
     noExt
+      .replace(/^(?:\.\.[/\\]?)+/, "")
       .replace(/^[.][/\\]?/, "")
       .replace(/[\\/]+/g, "-")
       .replace(/[^a-zA-Z0-9._-]+/g, "-")
       .replace(/-+/g, "-")
       .replace(/^-|-$/g, "") + ".md"
   );
+}
+
+function expandTilde(p: string): string {
+  if (p === "~") return process.env.HOME ?? p;
+  if (p.startsWith("~/")) return path.join(process.env.HOME ?? "", p.slice(2));
+  return p;
 }
 
 function relativePathToSafeFileName(rel: string): string {

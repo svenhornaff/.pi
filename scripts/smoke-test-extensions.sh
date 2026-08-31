@@ -38,7 +38,7 @@
 
 set -uo pipefail
 
-MODEL="${SMOKE_TEST_MODEL:-openai-codex/gpt-5.5}"
+MODEL="${SMOKE_TEST_MODEL:-openrouter/anthropic/claude-sonnet-5}"
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--model)
@@ -76,8 +76,8 @@ echo "=== Extension smoke test (model: $MODEL) ==="
 echo
 
 echo "-- 1. Load checks --"
-check "no-tools load, no errors" '^ok$' pi -p --no-tools --model "$MODEL" "reply ok"
-check "with-tools load, no errors" '^ok$' pi -p --model "$MODEL" "reply ok"
+check "no-tools load, no errors" '^[Oo]k\.?[[:space:]]*$' pi -p --no-tools --model "$MODEL" "reply with exactly the single word ok, lowercase, no punctuation"
+check "with-tools load, no errors" '^[Oo]k\.?[[:space:]]*$' pi -p --model "$MODEL" "reply with exactly the single word ok, lowercase, no punctuation"
 echo
 
 WORKDIR=$(mktemp -d)
@@ -100,7 +100,7 @@ echo "-- 2. permission-gate.ts --"
 	cd "$GITDIR" || exit 1
 
 	check "blocks dangerous command (force push)" \
-		"(blocks dangerous|[Cc]an.t run|[Bb]locked).*(dangerous|force)" \
+		"([Bb]locked|[Cc]an.t run|safety guard|[Dd]estructive).*(force|dangerous|history)" \
 		pi -p --model "$MODEL" "run: git push origin main --force"
 
 	check "blocks credential-read command" \
