@@ -13,6 +13,7 @@ mirrored here by a workspace-local `tc-auth.py` PKCE flow for pi's MCP
 HTTP transport), untracked but **not matched by any `.gitignore` rule**.
 
 **Action taken:**
+
 - Confirmed via `git log --all --oneline -- agent/telecontext-token.json`
   and `git ls-files` that the file was **never tracked/committed** — no
   history rewrite needed.

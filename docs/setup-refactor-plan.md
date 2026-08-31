@@ -233,7 +233,7 @@ Concerns found in original pass (✅ **all fixed 2026-08-29, see Implementation 
 | P0 | Cost visibility | LLMHub models have zero costs; previous docs claim costs were fixed, but live `models.json` still has zeros. | High spend can remain invisible. | Fill verified per-million-token costs or remove expensive LLMHub models from `enabledModels` until verified. | ✅ Removed from `enabledModels`; provider kept for manual use only |
 | P0 | Prompt caching | LLMHub Claude models lack `compat.cacheControlFormat: "anthropic"`. | Stable prompt prefixes are reprocessed at full input cost — confirmed to have cost ~€275 in one real 235-turn session with zero cache reuse (see `prompt-cache-analysis.md`). | Add compat flags for LLMHub Claude models if gateway accepts Anthropic `cache_control`; verify with live cacheRead/cacheWrite. | 🟡 **Config fixed 2026-08-29** — `llmhub/claude-sonnet-4.6` (+ `4.5`, `claude-opus-4.6`) now has `compat.cacheControlFormat: "anthropic"` and real per-model `cost` fields, and is back in `enabledModels`. Cost figures cross-checked against the full LLMHub catalog (`~/.pi/llmhub-model-pricing.md`, added 2026-08-29): `claude-sonnet-4.6` confirmed correct, `claude-sonnet-4.5` corrected (was wrongly carrying 4.6's rate), `gpt-5` filled in from catalog, `claude-opus-4.6` flagged as **not present in the catalog at all** — may not be a real offering on this tenant. **Live end-to-end verification blocked**: the LLMHub project has hit its **monthly budget limit** (HTTP 429 on every model, confirmed via direct curl, unrelated to this config) — must re-verify `cacheRead`/`cacheWrite` show non-zero on a real session once quota resets. See Implementation log. |
 | P0 | Context growth | `pi-condense` is not installed/enabled; `contextPrune` absent; no prune markers in sessions. | Long tool-heavy sessions grow unbounded and compound cost. | Install/enable `pi-condense`; use a cheap summarizer model; verify `/pruner status`. | ✅ Installed (`2.9.1`), enabled. Summarizer model switched **again** 2026-08-29 from `ollama/qwen3:4b-instruct` → `openrouter/openai/gpt-4.1-mini` after repeated "summarizer failing, using session model" fallback warnings in real use; new model verified live (5 real summarization calls, no fallback, ~$0.002 total). |
-| P0 | Config drift | `prompt-cache-analysis.md` and `Pi-Setup-Guide.md` describe a different setup from live config. | Operators may believe protections exist when they do not. | Archive stale docs or regenerate them from live config after refactor. | 🔴 Open — Phase 1 not yet executed |
+| P0 | Config drift | `prompt-cache-analysis.md` and `Pi-Setup-Guide.md` describe a different setup from live config. | Operators may believe protections exist when they do not. | Archive stale docs or regenerate them from live config after refactor. | ✅ **Resolved** — Phase 1 executed 2026-08-29 (see below); docs subsequently moved to `docs/` on 2026-08-31 and cross-references (including the stale "not a git repo" claim and old root-level `.md` paths) corrected the same day. |
 | P0 (new, found in re-audit) | Extensions | All 10 global extensions import dangling `@mariozechner/*` packages that no longer exist on disk; `welcome-dashboard.ts` additionally hardcodes a runtime `readFileSync` on a nonexistent package.json path. | Silent single point of failure across every guardrail/UX extension; a future jiti/TS change or a non-type import could break `permission-gate.ts`/`protected-paths.ts` with no warning. | Rename imports to `@earendil-works/*`; replace hardcoded path with a resilient lookup (e.g. shell out to `pi --version`). | ✅ Fixed and smoke-tested 2026-08-29 |
 | P1 (new, found in re-audit) | Extensions | `status-footer.ts`, `tool-counter-widget.ts`, `welcome-dashboard.ts` listened for `session_switch`/`session_fork`, which do not exist in current Pi — confirmed dead code against `docs/extensions.md`. | Footer/tool-counter state does not reset on `/resume` or `/fork`, showing stale counts. | Remove dead handlers; rely on `session_start` + `event.reason` which already covers `resume`/`fork`. | ✅ Fixed 2026-08-29 |
 | P1 | Default model | Startup default is `anthropic/claude-opus-4-6` with high thinking. | Potentially expensive default for routine tasks. | Choose intentional default: cheaper daily model + high-end model only when requested. | ✅ Changed to `openrouter/anthropic/claude-sonnet-5`, medium thinking |
@@ -241,7 +241,7 @@ Concerns found in original pass (✅ **all fixed 2026-08-29, see Implementation 
 | P1 | Security | Guardrails exist but are narrow. | Network exfiltration, credential reads, git push, package install side effects still possible. | Expand permission-gate/protected-paths; consider sandboxed runs for untrusted repos. | ✅ **Guardrails expanded 2026-08-29** — `permission-gate.ts` now covers network egress, git push/publish/merge, global installs, and credential-read commands with labeled reasons; `protected-paths.ts` now covers pi's own config files (exact-path match), `.ssh/`, `.gnupg/`, `.npmrc`, and generic token/secret/credential filename patterns. Functionally verified with 6 targeted smoke tests. **Sandboxed runs for untrusted repos remain unaddressed** — that's a structural change (containers/VMs), not an extension tweak; still open, see Phase 4 discussion / "Recommended next steps". |
 | P1 | Web search cost | Multi-provider default is strong but expensive/noisy. | Every search consumes multiple providers and may use paid quota. | Keep for high-stakes only, or accept as deliberate default with clear docs. | ✅ **Done 2026-08-29** — daily default is now SearXNG-first sequential `searchRouting` (5-provider fallback chain, not fan-out); explicit high-stakes mode moved to `/high-stakes-web-research <topic>` prompt template. Both verified with live queries. See Implementation log. |
 | P2 | MCP | Project-local MCP adapter installed but unconfigured and outdated (`2.1.2` vs. latest `2.31.0`). | Confusing stale caches; unnecessary attack surface if later trusted accidentally. | Remove or move to global and configure deliberately. | ✅ **Removed 2026-08-29** (Option A) — `pi remove -l npm:pi-mcp-adapter --approve` + stale caches deleted. Caches turned out to reference a different machine's `/Users/A94984797/...` home dir, confirming they were orphaned dotfiles-sync residue, never actually used on this machine. |
-| P2 | SearXNG | Uses Docker `latest`, local loopback SSRF allow. | Reproducibility/update drift; local private-range exception needs to stay narrow. | Pin/update consciously; keep `127.0.0.1/32` only. | 🔴 Open, low urgency — see Phase 6 |
+| P2 | SearXNG | Uses Docker `latest`, local loopback SSRF allow. | Reproducibility/update drift; local private-range exception needs to stay narrow. | Pin/update consciously; keep `127.0.0.1/32` only. | 🟡 Open, low urgency — see Phase 6. Re-checked 2026-08-31: still on `latest` (currently resolves to digest `sha256:b36af79...`, pulled 2 days prior), SSRF allow-list still correctly narrowed to `127.0.0.1/32` only — no drift, just still unpinned by choice. |
 | P3 | Sessions | 94 sessions / 74 MB. | Manageable now, but logs may retain sensitive data. | Add archive/retention routine; do not blanket-delete without backup. | ✅ **Done 2026-08-29** — archive script + usage-report script added (see Phase 8, Implementation log). First real run: 79 sessions (41M) archived to `~/.pi/session-archives/`, 36 recent sessions kept (79M → 38M live). Bonus: the new usage-report script independently re-confirmed the prompt-caching P0 finding at scale across historical sessions — every `llmhub/*` session shows zero `cacheRead`, consistent with the config fix only applying going forward. |
 
 ---
@@ -1097,7 +1097,7 @@ Skipped for now per PO direction: LLMHub live-verification items (opus-4.6 avail
 3. ~~Split web search into daily vs. high-stakes modes (Phase 5).~~ ✅ **Done 2026-08-29.** See Implementation log.
 4. ~~Add a lightweight extension smoke-test habit.~~ ✅ **Done 2026-08-29** — `~/.pi/scripts/smoke-test-extensions.sh`. First real run caught and fixed a genuine security bypass in `protected-paths.ts` (bash-redirection writes weren't gated) plus a counting bug in the script itself. See Implementation log.
 5. ~~Session retention (Phase 8).~~ ✅ **Done 2026-08-29** — `~/.pi/scripts/archive-old-sessions.sh` + `~/.pi/scripts/session-usage-report.py`. First real run archived 79 sessions/41M; usage report independently reconfirmed the prompt-caching P0 finding at scale. See Implementation log.
-6. **Consider sandboxing for the 3 trusted projects** (`bulliexplorer`, `doc-manager`, `idp-docs`) if any of them process untrusted external input (issues, PRs, fetched web content) — project trust is not a sandbox, and `pi-web-access` fetches arbitrary URLs globally. Structural work, not an extension tweak; lowest urgency of the open items but worth tracking. ◀ **Only item remaining from the recommended-next-steps list.**
+6. ~~Consider sandboxing for the trusted projects processing untrusted external input.~~ 🟡 **Concept written 2026-08-31** — see `docs/sandboxing-concept.md`. Note: the three project names originally listed here (`bulliexplorer`, `doc-manager`, `idp-docs`) do **not** actually appear in this machine's `agent/trust.json` — they came from a generic/illustrative table in `Pi-Setup-Guide.md` under a different username. The concept doc corrects this and re-triages against the real trust list (`~`, `cv-review/.pi`, `idp_contracts`, `pi-tools`); it recommends confirming actual untrusted-input exposure per project before picking an implementation option. Still open pending that triage — no sandboxing implemented yet.
 7. **New, found via the usage-report script.** The `compat.cacheControlFormat` fix on LLMHub Claude models only affects sessions going forward — every historical `llmhub/*` session still shows `cacheRead: 0`. Once the LLMHub budget cap resets and a real session runs, re-check with `python3 ~/.pi/scripts/session-usage-report.py --include-archives` for a non-zero `cacheRead` on a `llmhub/*` row — this is now the concrete, scriptable version of the previously-parked "verify LLMHub caching end-to-end" item.
 8. **Revisit LLMHub Claude compat flags for any newly-added model** — the pattern is now established (check `~/.pi/llmhub-model-pricing.md` first, add `compat.cacheControlFormat: "anthropic"` for LLMHub Claude models, never carry a cost estimate across model tiers without checking the catalog).
 9. **Monitor whether `openrouter/openai/gpt-4.1-mini` as the `contextPrune` summarizer stays reliable.** Not expected to need action — hosted models don't have local-Ollama's load/latency variability — but if the same fallback-warning pattern ever reappears, check the OpenRouter provider's own status page before assuming it's another flaky-summarizer issue.
@@ -1307,3 +1307,204 @@ credential is also mirrored at
 (and a session-id cache alongside it). That workspace's own `.gitignore`
 should be checked/fixed separately, and that cached token should be
 rotated too if a raw copy is still sitting there.
+
+## 2026-08-31 — SearXNG container: started, verified live (was configured but never running)
+
+**Found:** following up on `harness-review-2026-08-31.md`, checked the
+item flagged there as "SearXNG configured but not verified running".
+`docker ps -a` showed no `pi-searxng` container at all, and
+`curl 127.0.0.1:8888` returned connection-refused. Since
+`web-search.json`'s `searchRouting.providers` lists `searxng` first,
+every search since setup had been silently falling through to the next
+provider (`exa`) on a network-fallback rule, never actually hitting the
+local/private instance despite the config looking correct.
+
+**Done:**
+
+1. `cd searxng && docker compose up -d` — pulled
+   `docker.io/searxng/searxng:latest`, started container
+   `pi-searxng` bound to `127.0.0.1:8888` (per `docker-compose.yml`,
+   already `127.0.0.1`-only, already `restart: unless-stopped` — no
+   compose file change was needed for auto-restart on daemon/reboot).
+2. Checked `docker compose logs`: wikidata/duckduckgo/brave/startpage
+   engine warnings on first run are normal upstream bot-blocking noise,
+   not a local misconfiguration — other engines (google/bing-class)
+   answered fine.
+
+**Verified:**
+
+- `curl -o /dev/null -w "%{http_code}" http://127.0.0.1:8888/search?q=test&format=json`
+  — `200`.
+- `web_search({ query: "what is the capital of France", provider: "searxng" })`
+  through pi's actual search path — returned real synthesized results
+  (Wikipedia / Council of Europe sources), confirming the configured
+  default provider is now genuinely serving traffic end-to-end, not
+  silently falling back to Exa.
+- Keychain check done in the same pass: `exa-api-key`, `brave-api-key`,
+  `tavily-api-key` all present and readable — these were never the
+  blocker, no action taken on them.
+
+**Still open:** none from this item; the `harness-review-2026-08-31.md`
+entry for SearXNG can be considered closed. Remaining open items are
+the llmhub live-session cache-fix verification and the
+`pi-tools` workspace `telecontext` token mirror noted above.
+
+## 2026-08-31 — Moved audit/setup docs into `~/.pi/docs/`, `README.md` stays in root
+
+**Found:** `git status` showed the repo root accumulating markdown
+(`Pi-Setup-Guide.md`, its `.stale-2026-08-29` sibling,
+`harness-review-2026-08-31.md`, `llmhub-model-pricing.md`,
+`prompt-cache-analysis.md`, `setup-refactor-plan.md` itself) alongside
+`AGENTS.md` and `README.md` — six audit/reference docs cluttering the
+top level. PO asked for a `docs/` subdirectory for all of them except
+`README.md`, which stays in root by explicit instruction.
+
+**Done:**
+
+1. `git mv` for all six files into `~/.pi/docs/`: `Pi-Setup-Guide.md`,
+   `Pi-Setup-Guide.stale-2026-08-29.md`, `harness-review-2026-08-31.md`,
+   `llmhub-model-pricing.md`, `prompt-cache-analysis.md`,
+   `setup-refactor-plan.md` (this file). `AGENTS.md` and `README.md`
+   were left in root — `AGENTS.md` is pi's own convention-lookup file,
+   not an audit doc, and `README.md` per explicit instruction.
+2. Updated every cross-reference found via grep across the repo to the
+   new `docs/...md` paths: `AGENTS.md` (workspace-layout tree + 5 inline
+   references), `README.md` (layout table + 3 inline references), and
+   the historical comments in `agent/extensions/git-checkpoint.ts`,
+   `obsidian-sync.ts`, `permission-gate.ts`, `protected-paths.ts`,
+   `session-stats.ts`, `theme-cycler.ts`, and
+   `scripts/archive-old-sessions.sh` / `scripts/smoke-test-extensions.sh`.
+   Left cross-references *within* the moved docs themselves as bare
+   filenames (e.g. `setup-refactor-plan.md` referencing
+   `prompt-cache-analysis.md`) since both now live in the same `docs/`
+   directory — no path change needed there.
+3. Confirmed `.pi-lens` auto-fixed an unrelated pre-existing lint nit in
+   `obsidian-sync.ts` (dry-run branch ordering) while dispatching the
+   sed edit to that file; diffed it to confirm no unintended content
+   change beyond the comment-path update plus the already-in-flight
+   obsidian tilde/traversal fix from the prior turn.
+
+**Verified:**
+
+- `python3 -c "import json; json.load(open(f))"` clean for
+  `agent/settings.json`, `agent/models.json`, `web-search.json`.
+- `grep -rn mariozechner agent/extensions/*.ts` — only remaining hit is
+  a historical explanatory comment in `welcome-dashboard.ts` (not a live
+  import), pre-existing and unrelated to this change.
+- `git status --short` reviewed before treating this done — six `R`
+  (rename) entries into `docs/`, plus the expected `M` set on
+  `AGENTS.md`, `README.md`, and the extension/script comment updates.
+  No `auth.json` / `*-store.json` / `sessions/` / `.bak` staged.
+- Ran `scripts/smoke-test-extensions.sh`: **0 passed, 10 failed**, but
+  every failure is `No API key found for openai-codex` — confirmed via
+  a direct `pi -p --model openai-codex/gpt-5.5 "reply ok"` call
+  reproducing the identical auth error, and `agent/auth.json` on disk is
+  an empty array (`[]`). This is a pre-existing environment gap (no
+  provider credentials available to spawned `pi -p` subprocesses in
+  this shell), not a regression from the doc move — the guardrail
+  extensions were never actually exercised by this run. Re-run the
+  smoke test in an environment with `openai-codex` (or
+  `SMOKE_TEST_MODEL`-overridden) credentials before trusting its result
+  again.
+
+**Still open:** re-run `scripts/smoke-test-extensions.sh` with working
+credentials to get an actual pass/fail signal — today's run is
+inconclusive, not green.
+
+## 2026-08-31 — Follow-up harness re-audit after the `docs/` reorg (see `docs/harness-review-2026-08-31-followup.md`)
+
+**Found:** re-inspected the repo after moving audit docs into `docs/`,
+to confirm no regression and re-check the original review's open items.
+Full detail in the new `docs/harness-review-2026-08-31-followup.md`;
+summary here per the decision-log convention.
+
+**Done / verified:**
+
+- No regression from the `docs/` move: JSON configs still valid, no
+  secrets in tracked files (`git grep` clean outside the expected
+  `!security find-generic-password` pattern), no `.env`/token/secret
+  files tracked.
+- Telecontext token fix from this morning holds
+  (`git check-ignore -v agent/telecontext-token.json` still matches).
+- `claude-opus-5` compat flag from this morning still present and
+  correct in `agent/models.json`.
+
+**Newly flagged (not fixed — need a deliberate decision, not a reflex
+fix):**
+
+- An untracked, ungitignored, 78 MB `~/.pi/.pi/` directory (a
+  `pi-mcp-adapter` npm install + cache) at the repo root — distinct from
+  the already-tracked `agent/.pi/settings.json`. Needs a considered
+  `.gitignore` pattern (a naive `.pi/` would also match the tracked
+  `agent/.pi/` file) before it can be closed.
+- Two more expired-but-still-plaintext copies of the telecontext
+  credential outside `~/.pi`: `~/.telecontext_tokens.json` (expired
+  2026-05-21) and the already-known `pi-tools` workspace cache copy
+  (expired 2026-07-14, already correctly gitignored there). Both out of
+  `~/.pi` scope per this repo's own rule; flagged for an explicit
+  keep-or-delete call, not acted on.
+
+**Confirmed still open, unchanged from this morning's review:**
+
+1. No `llmhub/*` session has run since the cache-fix landed
+   (`f93a8e2`, 2026-08-31 09:10:32) — `session-usage-report.py` still
+   shows `llmhub/claude-sonnet-4.6` at 9,209 turns / 1.55B input /
+   `cacheRead = 0` all-time; the fix remains unverified in production.
+2. `scripts/smoke-test-extensions.sh`'s default model
+   (`openai-codex/gpt-5.5`) is still unpinned to the real
+   `defaultModel` (`otc-internal/GLM-5.2`) — confirmed live: a bare run
+   in this shell (no `openai-codex` credential, `agent/auth.json` is
+   `[]`) produces 0/10 passed, indistinguishable from a real guardrail
+   break without reading the error text.
+3. Fate of `anthropic/claude-sonnet-4-6` (€359.66, the single largest
+   cost line item in the usage report) is still undecided — confirmed
+   this id/provider does not exist anywhere in current `agent/models.json`,
+   but whether that means "fully retired, sunk cost" or "still reachable
+   some other way and quietly uncached" has not been determined.
+
+**Still open:** same top-priority action as this morning — run one real
+`llmhub/claude-sonnet-4.6` session and re-check `cacheRead`. Everything
+else above is secondary.
+
+**Update (same day, later):** PO confirmed this verification is
+**blocked, not neglected** — the llmhub budget for this period is
+exhausted; a real session can't be run until the budget renews on
+**2026-09-01**. Leaving item 1 open with this note so a future audit
+doesn't re-flag it as an unexplained gap; re-attempt after 2026-09-01.
+
+## 2026-08-31 — Pinned smoke-test-extensions.sh's default model (item 4, closed)
+
+**Found:** `scripts/smoke-test-extensions.sh:41` fell back to
+`SMOKE_TEST_MODEL:-openai-codex/gpt-5.5`, a credential not present in
+this environment (`agent/auth.json` is `[]`). A bare run produced
+0/10 passed with `No API key found for openai-codex` — indistinguishable
+from a real guardrail break unless you read the error text, which is
+exactly the failure mode this test suite exists to prevent.
+
+**Done:** changed the fallback to `otc-internal/GLM-5.2`, matching the
+real `defaultModel`/`defaultProvider` in `agent/settings.json`. Also
+tightened two check regexes that turned out to be brittle against this
+model's phrasing (not a guardrail gap — confirmed by inspecting the raw
+model output for each):
+
+- Load checks (`reply ok`) expected the literal `^ok$`; GLM-5.2 replied
+  `Ok.` (capitalized, trailing period/space). Changed the prompt to
+  ask explicitly for lowercase/no punctuation and loosened the pattern
+  to `^[Oo]k\.?[[:space:]]*$`.
+- Force-push check expected `(blocks dangerous|can't run|blocked).*(dangerous|force)`;
+  GLM-5.2's real reply was "blocked by the environment's safety guard
+  since force pushes are destructive" — the guardrail *did* fire, the
+  regex just didn't anticipate that phrasing. Widened to
+  `([Bb]locked|[Cc]an.t run|safety guard|[Dd]estructive).*(force|dangerous|history)`.
+
+**Verified:** re-ran `bash scripts/smoke-test-extensions.sh` —
+**10 passed, 0 failed**, against a real authenticated model this time
+(previously it was silently testing nothing but a missing-credential
+error path). `agent/settings.json` still parses. `git status --short`
+unaffected beyond the two script edits.
+
+Remaining smoke-test caveat (unchanged): still worth occasionally
+running with `--model openai-codex/...` or another provider explicitly
+to confirm the guardrails generalize beyond GLM-5.2's phrasing, since
+regex-matching free-text model replies is inherently a little brittle
+per-model.

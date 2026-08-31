@@ -19,7 +19,7 @@
  *
  * Why this exists: this exact manual calculation (fresh vs. cached input,
  * per-model cost breakdown) came up repeatedly in ad-hoc form throughout
- * ~/.pi/setup-refactor-plan.md's cost investigations (see prompt-cache-
+ * ~/.pi/docs/setup-refactor-plan.md's cost investigations (see prompt-cache-
  * analysis.md and the P0 prompt-caching finding). This extension makes it
  * a standing one-command check instead of a bespoke script each time.
  *
@@ -37,7 +37,10 @@
  * docs/session-format.md, not just the visible assistant turns.
  */
 
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 
 interface UsageLike {
 	input?: number;
@@ -102,7 +105,12 @@ function addUsage(t: ModelTotals, usage: UsageLike) {
 		t.costOutput += cost.output ?? 0;
 		t.costCacheRead += cost.cacheRead ?? 0;
 		t.costCacheWrite += cost.cacheWrite ?? 0;
-		t.costTotal += cost.total ?? (cost.input ?? 0) + (cost.output ?? 0) + (cost.cacheRead ?? 0) + (cost.cacheWrite ?? 0);
+		t.costTotal +=
+			cost.total ??
+			(cost.input ?? 0) +
+				(cost.output ?? 0) +
+				(cost.cacheRead ?? 0) +
+				(cost.cacheWrite ?? 0);
 	}
 }
 
@@ -114,7 +122,10 @@ function fmtCost(n: number): string {
 	return n.toFixed(4);
 }
 
-function computeSessionStats(ctx: ExtensionContext): { byModel: ModelTotals[]; grand: ModelTotals } {
+function computeSessionStats(ctx: ExtensionContext): {
+	byModel: ModelTotals[];
+	grand: ModelTotals;
+} {
 	const byModel = new Map<string, ModelTotals>();
 	const grand = newTotals("", "TOTAL");
 
@@ -160,7 +171,12 @@ function computeSessionStats(ctx: ExtensionContext): { byModel: ModelTotals[]; g
 		addUsage(grand, usage);
 	}
 
-	return { byModel: Array.from(byModel.values()).sort((a, b) => b.costTotal - a.costTotal), grand };
+	return {
+		byModel: Array.from(byModel.values()).sort(
+			(a, b) => b.costTotal - a.costTotal,
+		),
+		grand,
+	};
 }
 
 function formatReport(ctx: ExtensionContext): string {
@@ -178,7 +194,9 @@ function formatReport(ctx: ExtensionContext): string {
 	lines.push(
 		`${"provider/model".padEnd(38)} ${"turns".padStart(6)} ${"fresh-in".padStart(11)} ${"cacheRead".padStart(11)} ${"cacheWrite".padStart(11)} ${"output".padStart(10)} ${"cost".padStart(10)}`,
 	);
-	lines.push("-".repeat(38 + 1 + 6 + 1 + 11 + 1 + 11 + 1 + 11 + 1 + 10 + 1 + 10));
+	lines.push(
+		"-".repeat(38 + 1 + 6 + 1 + 11 + 1 + 11 + 1 + 11 + 1 + 10 + 1 + 10),
+	);
 
 	for (const t of byModel) {
 		const label = `${t.provider}/${t.model}`;
@@ -186,7 +204,9 @@ function formatReport(ctx: ExtensionContext): string {
 			`${label.padEnd(38)} ${String(t.turns).padStart(6)} ${fmtInt(t.input).padStart(11)} ${fmtInt(t.cacheRead).padStart(11)} ${fmtInt(t.cacheWrite).padStart(11)} ${fmtInt(t.output).padStart(10)} ${fmtCost(t.costTotal).padStart(10)}`,
 		);
 	}
-	lines.push("-".repeat(38 + 1 + 6 + 1 + 11 + 1 + 11 + 1 + 11 + 1 + 10 + 1 + 10));
+	lines.push(
+		"-".repeat(38 + 1 + 6 + 1 + 11 + 1 + 11 + 1 + 11 + 1 + 10 + 1 + 10),
+	);
 	lines.push(
 		`${"TOTAL".padEnd(38)} ${String(grand.turns).padStart(6)} ${fmtInt(grand.input).padStart(11)} ${fmtInt(grand.cacheRead).padStart(11)} ${fmtInt(grand.cacheWrite).padStart(11)} ${fmtInt(grand.output).padStart(10)} ${fmtCost(grand.costTotal).padStart(10)}`,
 	);
@@ -204,12 +224,23 @@ function formatReport(ctx: ExtensionContext): string {
 	lines.push(`  TOTAL:      ${fmtCost(grand.costTotal)}`);
 
 	// Zero-cache flag -- same heuristic as ~/.pi/scripts/session-usage-report.py.
-	const flagged = byModel.filter((t) => t.input + t.cacheRead >= 50_000 && t.cacheRead === 0 && t.provider !== "(tool-internal)" && t.provider !== "(compaction)" && t.provider !== "(branch-summary)");
+	const flagged = byModel.filter(
+		(t) =>
+			t.input + t.cacheRead >= 50_000 &&
+			t.cacheRead === 0 &&
+			t.provider !== "(tool-internal)" &&
+			t.provider !== "(compaction)" &&
+			t.provider !== "(branch-summary)",
+	);
 	if (flagged.length > 0) {
 		lines.push("");
-		lines.push("⚠️  Zero cacheRead despite significant input tokens -- check compat.cacheControlFormat for:");
+		lines.push(
+			"⚠️  Zero cacheRead despite significant input tokens -- check compat.cacheControlFormat for:",
+		);
 		for (const t of flagged) {
-			lines.push(`  - ${t.provider}/${t.model} (input+cacheRead=${fmtInt(t.input + t.cacheRead)})`);
+			lines.push(
+				`  - ${t.provider}/${t.model} (input+cacheRead=${fmtInt(t.input + t.cacheRead)})`,
+			);
 		}
 	}
 
@@ -217,13 +248,17 @@ function formatReport(ctx: ExtensionContext): string {
 	const activeModel: any = ctx.model;
 	if (activeModel) {
 		lines.push("");
-		lines.push(`Active model pricing (${activeModel.id ?? activeModel.name ?? "unknown"}), per million tokens:`);
+		lines.push(
+			`Active model pricing (${activeModel.id ?? activeModel.name ?? "unknown"}), per million tokens:`,
+		);
 		const cost = activeModel.cost ?? {};
 		lines.push(
 			`  input=${cost.input ?? 0}  output=${cost.output ?? 0}  cacheRead=${cost.cacheRead ?? 0}  cacheWrite=${cost.cacheWrite ?? 0}`,
 		);
 		if (Array.isArray(cost.tiers) && cost.tiers.length > 0) {
-			lines.push(`  (has ${cost.tiers.length} volume-based pricing tier(s) -- see models.json for thresholds)`);
+			lines.push(
+				`  (has ${cost.tiers.length} volume-based pricing tier(s) -- see models.json for thresholds)`,
+			);
 		}
 	}
 
@@ -232,7 +267,8 @@ function formatReport(ctx: ExtensionContext): string {
 
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("session-stats", {
-		description: "Show cumulative token usage and cost for this session (fresh vs. cached input, output, per-model breakdown)",
+		description:
+			"Show cumulative token usage and cost for this session (fresh vs. cached input, output, per-model breakdown)",
 		handler: async (_args, ctx) => {
 			const report = formatReport(ctx);
 			if (ctx.hasUI) {

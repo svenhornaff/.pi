@@ -14,7 +14,7 @@
  *
  * Reference: examples/extensions/git-checkpoint.ts (pi v0.57.1)
  *
- * Perf note (2026-08-29, ~.pi/setup-refactor-plan.md Phase 4 item 5): skips the
+ * Perf note (2026-08-29, ~/.pi/docs/setup-refactor-plan.md Phase 4 item 5): skips the
  * `git stash create` call entirely when the cwd isn't a git repo, or when the
  * working tree is already clean (nothing to check-point), instead of shelling
  * out on every single turn unconditionally.
@@ -40,7 +40,10 @@ export default function (pi: ExtensionAPI) {
 	// actually something to check-point.
 	pi.on("turn_start", async () => {
 		if (isGitRepo === undefined) {
-			const { code } = await pi.exec("git", ["rev-parse", "--is-inside-work-tree"]);
+			const { code } = await pi.exec("git", [
+				"rev-parse",
+				"--is-inside-work-tree",
+			]);
 			isGitRepo = code === 0;
 		}
 		if (!isGitRepo) return; // not a git repo — nothing to do, and nothing to re-check each turn
@@ -48,7 +51,10 @@ export default function (pi: ExtensionAPI) {
 		// Skip the stash entirely when the working tree has no uncommitted changes —
 		// there is nothing meaningful to restore to, so this avoids a needless
 		// `git stash create` subprocess on every turn of a long, mostly-read-only session.
-		const { stdout: statusOut, code: statusCode } = await pi.exec("git", ["status", "--porcelain"]);
+		const { stdout: statusOut, code: statusCode } = await pi.exec("git", [
+			"status",
+			"--porcelain",
+		]);
 		if (statusCode !== 0 || statusOut.trim() === "") return;
 
 		// git stash create returns a ref without pushing to the stash list.
@@ -80,7 +86,10 @@ export default function (pi: ExtensionAPI) {
 			if (code === 0) {
 				ctx.ui.notify("Code restored to checkpoint", "info");
 			} else {
-				ctx.ui.notify("Failed to restore checkpoint — apply the stash manually", "warning");
+				ctx.ui.notify(
+					"Failed to restore checkpoint — apply the stash manually",
+					"warning",
+				);
 			}
 		}
 	});

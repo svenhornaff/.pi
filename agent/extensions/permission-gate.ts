@@ -19,7 +19,7 @@
  * because no UI is available to prompt the user.
  *
  * Reference: examples/extensions/permission-gate.ts (pi v0.57.1)
- * Expanded 2026-08-29 per ~/.pi/setup-refactor-plan.md Phase 4, item 4.
+ * Expanded 2026-08-29 per ~/.pi/docs/setup-refactor-plan.md Phase 4, item 4.
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -39,8 +39,14 @@ export default function (pi: ExtensionAPI) {
 
 		// --- network egress / remote execution ---
 		// curl/wget piped straight into a shell — classic "curl | bash" RCE pattern.
-		{ pattern: /\b(curl|wget)\b[^|;&\n]*\|\s*(sudo\s+)?(bash|sh|zsh|python3?)\b/i, label: "pipe remote content into a shell" },
-		{ pattern: /\bnc\s+(-\w+\s+)*[\w.-]+\s+\d+/i, label: "netcat to a remote host" },
+		{
+			pattern: /\b(curl|wget)\b[^|;&\n]*\|\s*(sudo\s+)?(bash|sh|zsh|python3?)\b/i,
+			label: "pipe remote content into a shell",
+		},
+		{
+			pattern: /\bnc\s+(-\w+\s+)*[\w.-]+\s+\d+/i,
+			label: "netcat to a remote host",
+		},
 		{ pattern: /\bssh\b/i, label: "remote shell (ssh)" },
 		{ pattern: /\bscp\b/i, label: "remote copy (scp)" },
 		{ pattern: /\brsync\b.*(:|@)/i, label: "rsync to a remote target" },
@@ -54,15 +60,30 @@ export default function (pi: ExtensionAPI) {
 
 		// --- broad/global installs & side effects ---
 		{ pattern: /\bnpm\s+(i|install)\s+.*-g\b/i, label: "global npm install" },
-		{ pattern: /\bpip3?\s+install\b(?!.*--user)/i, label: "pip install (verify venv/target)" },
-		{ pattern: /\bbrew\s+(install|uninstall|upgrade)\b/i, label: "modify Homebrew packages" },
+		{
+			pattern: /\bpip3?\s+install\b(?!.*--user)/i,
+			label: "pip install (verify venv/target)",
+		},
+		{
+			pattern: /\bbrew\s+(install|uninstall|upgrade)\b/i,
+			label: "modify Homebrew packages",
+		},
 		{ pattern: /\bpipx\s+install\b/i, label: "pipx global install" },
-		{ pattern: /\bdocker\s+run\b.*-v\s+(~|\$HOME|\/Users\/[^/]+)(\/|\s|:)/i, label: "docker run with a home-directory bind mount" },
+		{
+			pattern: /\bdocker\s+run\b.*-v\s+(~|\$HOME|\/Users\/[^/]+)(\/|\s|:)/i,
+			label: "docker run with a home-directory bind mount",
+		},
 
 		// --- credential / secret access ---
-		{ pattern: /\bsecurity\s+find-generic-password\b/i, label: "read a macOS keychain secret" },
+		{
+			pattern: /\bsecurity\s+find-generic-password\b/i,
+			label: "read a macOS keychain secret",
+		},
 		{ pattern: /\bop\s+(read|item\s+get)\b/i, label: "read a 1Password secret" },
-		{ pattern: /\b(gcloud\s+auth|aws\s+configure|az\s+login)\b/i, label: "cloud provider auth/config" },
+		{
+			pattern: /\b(gcloud\s+auth|aws\s+configure|az\s+login)\b/i,
+			label: "cloud provider auth/config",
+		},
 	];
 
 	pi.on("tool_call", async (event, ctx) => {
@@ -75,7 +96,10 @@ export default function (pi: ExtensionAPI) {
 
 		if (!ctx.hasUI) {
 			// In non-interactive mode (pi -p, JSON), block outright — no UI to prompt.
-			return { block: true, reason: `Dangerous command blocked (${match.label}, no UI for confirmation)` };
+			return {
+				block: true,
+				reason: `Dangerous command blocked (${match.label}, no UI for confirmation)`,
+			};
 		}
 
 		const choice = await ctx.ui.select(

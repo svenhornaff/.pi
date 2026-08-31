@@ -61,11 +61,11 @@
  * receives the block reason via the tool result.
  *
  * Reference: examples/extensions/protected-paths.ts (pi v0.57.1)
- * Expanded 2026-08-29 per ~/.pi/setup-refactor-plan.md Phase 4, item 4.
+ * Expanded 2026-08-29 per ~/.pi/docs/setup-refactor-plan.md Phase 4, item 4.
  * Bash bypass closed 2026-08-29 after smoke-test discovery (see script/log).
  * Bash false-positive/false-negative fix 2026-08-29 (this version) — targeted
  * write-target extraction replacing whole-command substring scanning; see
- * setup-refactor-plan.md implementation log for the specific cases that
+ * docs/setup-refactor-plan.md implementation log for the specific cases that
  * motivated this and the test matrix used to verify it.
  */
 

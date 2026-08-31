@@ -9,20 +9,23 @@ _Regenerated from live config after Phases 2–4 of `setup-refactor-plan.md` (se
 ## 1. Overview
 
 This machine runs [pi](https://github.com/earendil-works/pi), a terminal coding
-agent, configured under `~/.pi`. `~/.pi` is **not** a git repo (no version-control
-rollback) but timestamped manual backups exist under `~/.pi/backups/` and as
-`*.bak.<timestamp>` files alongside edited configs.
+agent, configured under `~/.pi`. `~/.pi` **is** a git repo (branch `t-mac`, as of
+2026-08-31) with secrets/sessions/backups gitignored — see `AGENTS.md` for the
+commit checklist. Timestamped manual backups also exist under `~/.pi/backups/`
+and as `*.bak.<timestamp>` files alongside edited configs for changes made
+outside a commit.
 
 Directory roles:
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `~/.pi/agent/` | **Global agent home** — settings, models, auth, extensions, themes, sessions. Shared across all projects. |
 | `~/.pi/agent/.pi/` | Project-local config for `~/.pi` itself (project-scoped MCP packages, web-fetch cache). |
 | `~/.pi/agent/npm/` | User-scope installed packages (`pi-web-access`, `pi-condense`). |
 | `~/.pi/agent/extensions/` | Global TypeScript extensions, loaded on every `pi` invocation. |
 | `~/.pi/searxng/` | Local SearXNG Docker Compose setup for private web search. |
-| `~/.pi/*.md` | Setup/audit documentation (this file, `setup-refactor-plan.md`, `prompt-cache-analysis.md`, `llmhub-model-pricing.md`). |
+| `~/.pi/README.md` | Top-level project README (kept at root, not moved). |
+| `~/.pi/docs/` | Setup/audit documentation (this file, `setup-refactor-plan.md`, `prompt-cache-analysis.md`, `llmhub-model-pricing.md`, harness review docs). Moved here from the repo root 2026-08-31 to reduce root clutter. |
 
 ---
 
@@ -79,12 +82,12 @@ Also present, not shown above: an `obsidian` block syncing `README.md`/`AGENTS.m
 Three custom providers configured, all via `openai-completions` compat:
 
 | Provider | Auth | Models defined | Notes |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `openrouter` | `!security find-generic-password -ws 'openrouter-api-key'` | none manual — catalogue-backed via `models-store.json` | No duplicate manual entries; inherits fetched cost/compat metadata automatically. |
-| `llmhub` | `!security find-generic-password -ws 'llmhub'` | `gpt-5`, `claude-sonnet-4.5`, `claude-sonnet-4.6`, `claude-opus-4.6` | Only `claude-sonnet-4.6` is in `enabledModels`. Cost figures cross-checked against `~/.pi/llmhub-model-pricing.md` (2026-08-29); `claude-opus-4.6` cost is unconfirmed and **may not be a real offering** on this LLMHub tenant — its name doesn't appear in the pricing catalog. Claude models carry `compat.cacheControlFormat: "anthropic"` so pi emits Anthropic-style `cache_control` breakpoints (see `prompt-cache-analysis.md` for why this matters — a real ~€275 session ran with zero cache reuse before this flag existed). |
+| `llmhub` | `!security find-generic-password -ws 'llmhub'` | `gpt-5`, `claude-sonnet-4.5`, `claude-sonnet-4.6`, `claude-opus-4.6` | Only `claude-sonnet-4.6` is in `enabledModels`. Cost figures cross-checked against `~/.pi/docs/llmhub-model-pricing.md` (2026-08-29); `claude-opus-4.6` cost is unconfirmed and **may not be a real offering** on this LLMHub tenant — its name doesn't appear in the pricing catalog. Claude models carry `compat.cacheControlFormat: "anthropic"` so pi emits Anthropic-style `cache_control` breakpoints (see `prompt-cache-analysis.md` for why this matters — a real ~€275 session ran with zero cache reuse before this flag existed). |
 | `ollama` | none (local) | `qwen3:4b-instruct`, `qwen2.5:7b`, `qwen3:8b`, `llama3.1:8b`, `mistral:latest`, `phi4:latest` | No longer used as the `contextPrune` summarizer (see below) — available for manual/local use. Compat flags `supportsDeveloperRole: false`, `supportsReasoningEffort: false` set for OpenAI-completions compatibility. |
 
-**Authoritative LLMHub cost reference:** `~/.pi/llmhub-model-pricing.md` (35-model catalog,
+**Authoritative LLMHub cost reference:** `~/.pi/docs/llmhub-model-pricing.md` (35-model catalog,
 PO-supplied 2026-08-29). Check that file before changing any `llmhub/*` cost figure — do not
 carry a cost estimate across model tiers without checking it first (this happened once already
 and was wrong: `claude-sonnet-4.5` had incorrectly inherited `claude-sonnet-4.6`'s rate).
@@ -94,7 +97,7 @@ and was wrong: `claude-sonnet-4.5` had incorrectly inherited `claude-sonnet-4.6`
 ## 4. Cost & Context Controls
 
 | Setting | Value | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `showCacheMissNotices` | `true` | Surfaces when a request misses the prompt cache. |
 | `compaction.enabled` | `true` | Rewrites/trims history once the context approaches the model's window. |
 | `compaction.reserveTokens` | `16384` | Headroom reserved before compaction triggers. |
@@ -107,7 +110,7 @@ and was wrong: `claude-sonnet-4.5` had incorrectly inherited `claude-sonnet-4.6`
 ## 5. Global Extensions — `~/.pi/agent/extensions/`
 
 | File | Purpose | Status (2026-08-29) |
-|---|---|---|
+| --- | --- | --- |
 | `permission-gate.ts` | Confirms/blocks dangerous bash commands (destructive fs/data ops, network egress, git push/publish, global installs, credential reads). | Expanded 2026-08-29 — see `setup-refactor-plan.md` Phase 4 item 4. |
 | `protected-paths.ts` | Blocks write/edit to secrets, pi's own config files, SSH/GPG material, generic token/secret-shaped filenames. | Expanded 2026-08-29, same source. |
 | `git-checkpoint.ts` | Stashes a recoverable checkpoint per turn so `/fork` can restore code state. | Optimized 2026-08-29 to skip on non-git dirs and clean working trees instead of shelling out every turn. |
@@ -169,7 +172,7 @@ any of these. Worth revisiting if any of them ever process untrusted external in
 
 ## 8. Known Open Items
 
-See `~/.pi/setup-refactor-plan.md` for the full, maintained list with status tracking. As of
+See `~/.pi/docs/setup-refactor-plan.md` for the full, maintained list with status tracking. As of
 2026-08-29, still open:
 
 - ~~Phase 5: web-search daily-vs-high-stakes split~~ ✅ done 2026-08-29
@@ -183,7 +186,7 @@ See `~/.pi/setup-refactor-plan.md` for the full, maintained list with status tra
 ## 9. Maintenance Scripts — `~/.pi/scripts/`
 
 | Script | Purpose | Run when |
-|---|---|---|
+| --- | --- | --- |
 | `smoke-test-extensions.sh` | 9 checks covering extension load, `permission-gate.ts` (dangerous/credential/benign commands), `protected-paths.ts` (write/edit tool AND bash-redirection bypass), `git-checkpoint.ts` (git/non-git dirs). | After **any** edit to `~/.pi/agent/extensions/*.ts`. |
 | `archive-old-sessions.sh` | Tars+gzips session `.jsonl` files older than N days (default 90) to `~/.pi/session-archives/`, verifies before deleting originals. `--dry-run` supported. | Monthly (manual). |
 | `session-usage-report.py` | Aggregates token usage/cost by provider/model from live + (`--include-archives`) archived sessions; flags high-input-zero-cacheRead sessions. `--since`, `--json` supported. | Whenever checking spend, or after a caching-related config change. |

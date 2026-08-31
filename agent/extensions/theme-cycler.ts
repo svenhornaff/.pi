@@ -17,7 +17,7 @@
  *     it's visible transiently in the swatch on every switch; keeping a
  *     permanent "🎨 dark" line was one of several one-extension-per-line
  *     status entries that pushed the footer well past a readable size.
- *     See ~/.pi/setup-refactor-plan.md.)
+ *     See ~/.pi/docs/setup-refactor-plan.md.)
  *
  * Usage: pi -e extensions/theme-cycler.ts -e extensions/minimal.ts
  */

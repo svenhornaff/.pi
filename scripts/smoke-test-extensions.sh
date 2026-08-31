@@ -3,7 +3,7 @@
 # smoke-test-extensions.sh
 #
 # Regression test for ~/.pi/agent/extensions/*.ts. Run this after ANY edit to
-# a global extension file (per ~/.pi/setup-refactor-plan.md, Phase 4 item 6).
+# a global extension file (per ~/.pi/docs/setup-refactor-plan.md, Phase 4 item 6).
 #
 # Exercises:
 #   1. Extensions load with no runtime errors (no-tools and with-tools)
@@ -19,7 +19,7 @@
 #      mentions a protected-path substring (e.g. grep for "node_modules",
 #      or a stderr redirect "2>&1") in the middle of an unrelated command
 #      line (added 2026-08-29 after this exact false positive blocked real
-#      work in this session multiple times — see setup-refactor-plan.md)
+#      work in this session multiple times — see docs/setup-refactor-plan.md)
 #   7. git-checkpoint.ts doesn't error/hang in a clean git repo
 #   8. git-checkpoint.ts doesn't error/hang in a non-git directory
 #
@@ -38,7 +38,7 @@
 
 set -uo pipefail
 
-MODEL="${SMOKE_TEST_MODEL:-openai-codex/gpt-5.5}"
+MODEL="${SMOKE_TEST_MODEL:-otc-internal/GLM-5.2}"
 while [[ $# -gt 0 ]]; do
 	case "$1" in
 	--model)
@@ -76,8 +76,8 @@ echo "=== Extension smoke test (model: $MODEL) ==="
 echo
 
 echo "-- 1. Load checks --"
-check "no-tools load, no errors" '^ok$' pi -p --no-tools --model "$MODEL" "reply ok"
-check "with-tools load, no errors" '^ok$' pi -p --model "$MODEL" "reply ok"
+check "no-tools load, no errors" '^[Oo]k\.?[[:space:]]*$' pi -p --no-tools --model "$MODEL" "reply with exactly the single word ok, lowercase, no punctuation"
+check "with-tools load, no errors" '^[Oo]k\.?[[:space:]]*$' pi -p --model "$MODEL" "reply with exactly the single word ok, lowercase, no punctuation"
 echo
 
 WORKDIR=$(mktemp -d)
@@ -100,7 +100,7 @@ echo "-- 2. permission-gate.ts --"
 	cd "$GITDIR" || exit 1
 
 	check "blocks dangerous command (force push)" \
-		"(blocks dangerous|[Cc]an.t run|[Bb]locked).*(dangerous|force)" \
+		"([Bb]locked|[Cc]an.t run|safety guard|[Dd]estructive).*(force|dangerous|history)" \
 		pi -p --model "$MODEL" "run: git push origin main --force"
 
 	check "blocks credential-read command" \

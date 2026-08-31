@@ -2,7 +2,7 @@
 #
 # archive-old-sessions.sh
 #
-# Session retention for ~/.pi/agent/sessions (per ~/.pi/setup-refactor-plan.md
+# Session retention for ~/.pi/agent/sessions (per ~/.pi/docs/setup-refactor-plan.md
 # Phase 8). Session .jsonl files are NOT deleted by pi automatically and can
 # accumulate indefinitely (79M / 115 files observed 2026-08-29, no prior
 # archival routine existed).

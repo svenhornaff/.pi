@@ -27,9 +27,10 @@ Workspace layout:
 ├── web-search.json        # web search provider config & routing policy
 ├── searxng/                # local SearXNG (docker-compose + config)
 ├── scripts/                 # maintenance scripts — see "Commands"
-├── setup-refactor-plan.md   # living decision log — read before changing defaults
-├── llmhub-model-pricing.md  # reference pricing catalog (LLMHub provider)
-└── prompt-cache-analysis.md # root-cause writeup of a real cost incident
+└── docs/                    # setup/audit markdown docs (README.md stays in root)
+    ├── setup-refactor-plan.md   # living decision log — read before changing defaults
+    ├── llmhub-model-pricing.md  # reference pricing catalog (LLMHub provider)
+    └── prompt-cache-analysis.md # root-cause writeup of a real cost incident
 ```
 
 ## Setup
@@ -93,7 +94,7 @@ python3 -c "import json; json.load(open('web-search.json'))"
 - `agent/models.json` — provider definitions. Claude models behind the
   `llmhub` provider **must** carry `compat.cacheControlFormat: "anthropic"`
   or prompt caching silently fails and every token is billed at full
-  price — this caused a real ~€275 incident (`prompt-cache-analysis.md`).
+  price — this caused a real ~€275 incident (`docs/prompt-cache-analysis.md`).
 - `agent/settings.json` `contextPrune` — the `pi-condense` config. The
   summarizer model must be a model that is reliably available; a flaky
   local Ollama model here causes constant "summarizer failing, falling
@@ -123,9 +124,11 @@ python3 -c "import json; json.load(open('web-search.json'))"
   **Never** reintroduce `@mariozechner/*` imports — that scope no longer
   exists on disk and every extension in this repo was previously broken
   by it. Grep before committing:
+
   ```bash
   grep -rn "mariozechner" agent/extensions/*.ts
   ```
+
 - Use only documented pi extension events. `session_switch` and
   `session_fork` are **not real events** — they were dead code in this
   repo before removal. Use `session_start` with `event.reason`
@@ -149,17 +152,17 @@ python3 -c "import json; json.load(open('web-search.json'))"
 
 The public surface is every `pi.registerCommand`, `pi.registerTool`, and
 `ctx.ui` widget id registered across `agent/extensions/*.ts`, plus every
-setting key documented in `README.md` and `setup-refactor-plan.md`.
+setting key documented in `README.md` and `docs/setup-refactor-plan.md`.
 
 Before treating any extension change as done:
 
 - Diff the surface against what it was before the change (new/removed/
   renamed command, tool, or settings key).
 - If something changed: update `README.md`'s extension/script table, and
-  add an entry to `setup-refactor-plan.md`'s implementation log stating
+  add an entry to `docs/setup-refactor-plan.md`'s implementation log stating
   the change explicitly — a removal is stated as a removal, not omitted.
 
-## Decision-log conventions (`setup-refactor-plan.md`)
+## Decision-log conventions (`docs/setup-refactor-plan.md`)
 
 - One entry per change, written when the change is made, with what was
   found, what was done, and how it was verified (command output, not
@@ -176,12 +179,14 @@ Before treating any extension change as done:
   session transcripts (`agent/sessions/`, `session-archives/`),
   `*.bak*` backups, installed `node_modules/`, and SearXNG runtime data.
   Verify before every commit that touches config, not just once:
+
   ```bash
   git status --short   # confirm no auth.json / *-store.json / sessions/ / .bak staged
   grep -rn "apiKey" agent/models.json web-search.json   # must show only
                                                           # `!security find-generic-password`
                                                           # references, never a raw key
   ```
+
 - Take a timestamped backup (`cp file file.bak.$(date +%Y%m%d-%H%M%S)`,
   outside the repo or gitignored) before editing any live config file by
   script/tool rather than by hand — these files break every pi session on
@@ -193,7 +198,7 @@ Before treating any extension change as done:
 1. Config or extension change made.
 2. JSON configs validated (`python3 -c "import json; json.load(...)"`).
 3. `scripts/smoke-test-extensions.sh` green, if extensions touched.
-4. Public surface diffed — `README.md` and `setup-refactor-plan.md` updated
+4. Public surface diffed — `README.md` and `docs/setup-refactor-plan.md` updated
    if it changed.
 5. `git status --short` checked for accidental secrets/session/backup
    staging before commit.

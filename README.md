@@ -29,11 +29,12 @@ agent/
 web-search.json         Web search provider config & routing policy
 searxng/                Local SearXNG instance (docker-compose + config)
 scripts/                Maintenance scripts (see below)
-setup-refactor-plan.md  Living decision log for this config (read this for
-                        the "why" behind non-obvious choices)
-llmhub-model-pricing.md Reference pricing catalog for the LLMHub provider
-prompt-cache-analysis.md Root-cause writeup of a real prompt-caching cost
-                        incident that shaped several settings below
+docs/                   Setup/audit markdown docs (this README stays in root)
+  setup-refactor-plan.md   Living decision log for this config (read this for
+                           the "why" behind non-obvious choices)
+  llmhub-model-pricing.md  Reference pricing catalog for the LLMHub provider
+  prompt-cache-analysis.md Root-cause writeup of a real prompt-caching cost
+                           incident that shaped several settings below
 ```
 
 ## Setup on a new machine
@@ -44,6 +45,7 @@ cd ~/.pi/agent && npm install --prefix extensions   # extension deps
 ```
 
 Then populate secrets (never committed):
+
 - `agent/auth.json` — provider credentials, or let `pi auth login` create it
 - API keys referenced from `models.json`/`web-search.json` via
   `!security find-generic-password -ws '<service>'` must exist in the macOS
@@ -59,7 +61,7 @@ cd searxng && docker compose up -d
 
 - **Default model**: `openrouter/anthropic/claude-sonnet-5` at medium thinking
   — a deliberate cost/capability balance, not the most powerful option
-  available. See `setup-refactor-plan.md` for the reasoning.
+  available. See `docs/setup-refactor-plan.md` for the reasoning.
 - **Context pruning** (`pi-condense`, via `contextPrune` in `settings.json`)
   keeps long sessions affordable by summarizing finished tool-call batches
   into recoverable stubs, retrievable with `context_tree_query`. The
@@ -68,12 +70,12 @@ cd searxng && docker compose up -d
 - **Prompt caching**: LLMHub Claude models require
   `compat.cacheControlFormat: "anthropic"` in `models.json` to actually use
   provider prompt caching. This was *not* the default and its absence
-  produced a real, expensive incident — see `prompt-cache-analysis.md`.
+  produced a real, expensive incident — see `docs/prompt-cache-analysis.md`.
 - **Cache keep-alive**: [`cache-warm`](https://www.npmjs.com/package/cache-warm)
   (npm, `luongnv89/pi-extensions`) sends a tiny hidden ping shortly before
   the provider's cache TTL expires so an idle gap or a slow turn doesn't
   cause a cold-cache miss on the next real message — the exact failure
-  mode described in `prompt-cache-analysis.md`. On by default, rate-limited
+  mode described in `docs/prompt-cache-analysis.md`. On by default, rate-limited
   to 12 pings/hour, and auto-stops after 30 minutes idle so a forgotten
   session doesn't bill overnight. Tune with `/cache-warm duration <Nm|Nh|forever>`,
   disable with `/cache-warm off`, inspect with `/cache-warm status` /
@@ -92,7 +94,7 @@ cd searxng && docker compose up -d
 ### Local (`agent/extensions/*.ts`)
 
 | Extension | Purpose |
-|---|---|
+| --- | --- |
 | `permission-gate.ts` | Prompts/blocks dangerous bash (force-push, `rm -rf`, credential reads, network egress, package publishing) |
 | `protected-paths.ts` | Blocks writes/edits to secrets, pi's own config files, and `.env*`/`.ssh/`/`.gnupg/` — including via bash redirection, not just the write/edit tools |
 | `git-checkpoint.ts` | Auto-checkpoints (git stash create) before risky turns; skips cleanly on non-git dirs or clean trees |
@@ -104,7 +106,7 @@ cd searxng && docker compose up -d
 ### npm packages (`agent/settings.json` → `packages`)
 
 | Package | Purpose |
-|---|---|
+| --- | --- |
 | `pi-web-access` | Fetch/browse tools for the model |
 | `pi-condense` | Context-economy layer — recoverable pruning of finished tool-call batches (see `contextPrune` settings above) |
 | `cache-warm` | Keep-alive pings against prompt-cache TTL expiry (see above) |
@@ -120,7 +122,7 @@ run it after editing any extension.
 ## Scripts (`scripts/`)
 
 | Script | Purpose |
-|---|---|
+| --- | --- |
 | `smoke-test-extensions.sh` | Verifies the guardrail extensions still block/allow the right things |
 | `archive-old-sessions.sh` | Archives session transcripts older than 90 days (`--dry-run` supported) |
 | `session-usage-report.py` | Aggregates historical cost/tokens by provider/model across all sessions; flags zero-cache-read sessions that indicate a caching misconfiguration |
