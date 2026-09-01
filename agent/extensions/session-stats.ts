@@ -24,7 +24,9 @@
  * a standing one-command check instead of a bespoke script each time.
  *
  * Usage:
- *   /session-stats
+ *   /session-stats            interactive TUI: themed overlay (Esc/Enter to close)
+ *   /session-stats plain      force the plain-text ctx.ui.notify() report
+ *   pi -p ... /session-stats  non-TUI (-p / json / rpc mode): plain stdout always
  *
  * Source data: iterates ctx.sessionManager.getEntries() and sums usage from:
  *   - message entries with message.role === "assistant"
@@ -41,6 +43,8 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
+import { DynamicBorder } from "@earendil-works/pi-coding-agent";
+import { Container, Key, matchesKey, Text } from "@earendil-works/pi-tui";
 
 interface UsageLike {
 	input?: number;
@@ -179,6 +183,18 @@ function computeSessionStats(ctx: ExtensionContext): {
 	};
 }
 
+/** Zero-cache flag -- same heuristic as ~/.pi/scripts/session-usage-report.py. */
+function computeZeroCacheFlags(byModel: ModelTotals[]): ModelTotals[] {
+	return byModel.filter(
+		(t) =>
+			t.input + t.cacheRead >= 50_000 &&
+			t.cacheRead === 0 &&
+			t.provider !== "(tool-internal)" &&
+			t.provider !== "(compaction)" &&
+			t.provider !== "(branch-summary)",
+	);
+}
+
 function formatReport(ctx: ExtensionContext): string {
 	const { byModel, grand } = computeSessionStats(ctx);
 
@@ -223,15 +239,7 @@ function formatReport(ctx: ExtensionContext): string {
 	lines.push(`  cacheWrite: ${fmtCost(totalCostCacheWrite)}`);
 	lines.push(`  TOTAL:      ${fmtCost(grand.costTotal)}`);
 
-	// Zero-cache flag -- same heuristic as ~/.pi/scripts/session-usage-report.py.
-	const flagged = byModel.filter(
-		(t) =>
-			t.input + t.cacheRead >= 50_000 &&
-			t.cacheRead === 0 &&
-			t.provider !== "(tool-internal)" &&
-			t.provider !== "(compaction)" &&
-			t.provider !== "(branch-summary)",
-	);
+	const flagged = computeZeroCacheFlags(byModel);
 	if (flagged.length > 0) {
 		lines.push("");
 		lines.push(
@@ -265,19 +273,268 @@ function formatReport(ctx: ExtensionContext): string {
 	return lines.join("\n");
 }
 
+const COL_MODEL = 38;
+const COL_TURNS = 6;
+const COL_NUM = 11;
+const COL_OUT = 10;
+const COL_COST = 10;
+
+/**
+ * Build the themed table rows (header, per-model rows, TOTAL row) as
+ * pre-styled strings. Shared by the overlay renderer.
+ */
+function buildThemedRows(
+	byModel: ModelTotals[],
+	grand: ModelTotals,
+	theme: {
+		fg: (color: string, s: string) => string;
+		bold: (s: string) => string;
+	},
+): string[] {
+	const rows: string[] = [];
+
+	const header = `${"provider/model".padEnd(COL_MODEL)} ${"turns".padStart(COL_TURNS)} ${"fresh-in".padStart(COL_NUM)} ${"cacheRead".padStart(COL_NUM)} ${"cacheWrite".padStart(COL_NUM)} ${"output".padStart(COL_OUT)} ${"cost".padStart(COL_COST)}`;
+	rows.push(theme.fg("accent", theme.bold(header)));
+
+	const sep = theme.fg(
+		"muted",
+		"-".repeat(
+			COL_MODEL +
+				1 +
+				COL_TURNS +
+				1 +
+				COL_NUM +
+				1 +
+				COL_NUM +
+				1 +
+				COL_NUM +
+				1 +
+				COL_OUT +
+				1 +
+				COL_COST,
+		),
+	);
+	rows.push(sep);
+
+	const zeroCache = new Set(
+		computeZeroCacheFlags(byModel).map((t) => `${t.provider}/${t.model}`),
+	);
+
+	for (const t of byModel) {
+		const label = `${t.provider}/${t.model}`;
+		const line = `${label.padEnd(COL_MODEL)} ${String(t.turns).padStart(COL_TURNS)} ${fmtInt(t.input).padStart(COL_NUM)} ${fmtInt(t.cacheRead).padStart(COL_NUM)} ${fmtInt(t.cacheWrite).padStart(COL_NUM)} ${fmtInt(t.output).padStart(COL_OUT)} ${fmtCost(t.costTotal).padStart(COL_COST)}`;
+		rows.push(
+			zeroCache.has(label) ? theme.fg("warning", line) : theme.fg("text", line),
+		);
+	}
+
+	rows.push(sep);
+
+	const totalLine = `${"TOTAL".padEnd(COL_MODEL)} ${String(grand.turns).padStart(COL_TURNS)} ${fmtInt(grand.input).padStart(COL_NUM)} ${fmtInt(grand.cacheRead).padStart(COL_NUM)} ${fmtInt(grand.cacheWrite).padStart(COL_NUM)} ${fmtInt(grand.output).padStart(COL_OUT)} ${fmtCost(grand.costTotal).padStart(COL_COST)}`;
+	rows.push(theme.fg("accent", theme.bold(totalLine)));
+
+	return rows;
+}
+
+/**
+ * Interactive, themed overlay for /session-stats. Same data as
+ * formatReport(), but with theme colors (warning on the zero-cache flag,
+ * muted separators, accent header/TOTAL row). Dismissed with Escape or
+ * Enter; purely presentational, no side effects on session state.
+ */
+async function showStatsOverlay(ctx: ExtensionContext): Promise<void> {
+	const { byModel, grand } = computeSessionStats(ctx);
+	const flagged = computeZeroCacheFlags(byModel);
+	const activeModel: any = ctx.model;
+
+	await ctx.ui.custom<void>(
+		(_tui, theme, _kb, done) => {
+			const container = new Container();
+			const borderFn = (s: string) => theme.fg("accent", s);
+
+			container.addChild(new DynamicBorder(borderFn));
+			container.addChild(
+				new Text(theme.fg("accent", theme.bold("Session Stats")), 1, 0),
+			);
+			container.addChild(new Text("", 1, 0));
+
+			if (byModel.length === 0) {
+				container.addChild(
+					new Text(
+						theme.fg("muted", "No usage recorded yet in this session."),
+						1,
+						0,
+					),
+				);
+			} else {
+				for (const row of buildThemedRows(byModel, grand, theme)) {
+					container.addChild(new Text(row, 1, 0));
+				}
+
+				container.addChild(new Text("", 1, 0));
+				container.addChild(
+					new Text(
+						theme.fg(
+							"muted",
+							"Cost breakdown by component (summed across all models):",
+						),
+						1,
+						0,
+					),
+				);
+				const totalCostInput = byModel.reduce((s, t) => s + t.costInput, 0);
+				const totalCostOutput = byModel.reduce((s, t) => s + t.costOutput, 0);
+				const totalCostCacheRead = byModel.reduce((s, t) => s + t.costCacheRead, 0);
+				const totalCostCacheWrite = byModel.reduce(
+					(s, t) => s + t.costCacheWrite,
+					0,
+				);
+				container.addChild(
+					new Text(
+						theme.fg("text", `  input:      ${fmtCost(totalCostInput)}`),
+						1,
+						0,
+					),
+				);
+				container.addChild(
+					new Text(
+						theme.fg("text", `  output:     ${fmtCost(totalCostOutput)}`),
+						1,
+						0,
+					),
+				);
+				container.addChild(
+					new Text(
+						theme.fg("text", `  cacheRead:  ${fmtCost(totalCostCacheRead)}`),
+						1,
+						0,
+					),
+				);
+				container.addChild(
+					new Text(
+						theme.fg("text", `  cacheWrite: ${fmtCost(totalCostCacheWrite)}`),
+						1,
+						0,
+					),
+				);
+				container.addChild(
+					new Text(
+						theme.fg(
+							"accent",
+							theme.bold(`  TOTAL:      ${fmtCost(grand.costTotal)}`),
+						),
+						1,
+						0,
+					),
+				);
+
+				if (flagged.length > 0) {
+					container.addChild(new Text("", 1, 0));
+					container.addChild(
+						new Text(
+							theme.fg(
+								"warning",
+								"⚠️  Zero cacheRead despite significant input tokens -- check compat.cacheControlFormat for:",
+							),
+							1,
+							0,
+						),
+					);
+					for (const t of flagged) {
+						container.addChild(
+							new Text(
+								theme.fg(
+									"warning",
+									`  - ${t.provider}/${t.model} (input+cacheRead=${fmtInt(t.input + t.cacheRead)})`,
+								),
+								1,
+								0,
+							),
+						);
+					}
+				}
+
+				if (activeModel) {
+					container.addChild(new Text("", 1, 0));
+					container.addChild(
+						new Text(
+							theme.fg(
+								"muted",
+								`Active model pricing (${activeModel.id ?? activeModel.name ?? "unknown"}), per million tokens:`,
+							),
+							1,
+							0,
+						),
+					);
+					const cost = activeModel.cost ?? {};
+					container.addChild(
+						new Text(
+							theme.fg(
+								"dim",
+								`  input=${cost.input ?? 0}  output=${cost.output ?? 0}  cacheRead=${cost.cacheRead ?? 0}  cacheWrite=${cost.cacheWrite ?? 0}`,
+							),
+							1,
+							0,
+						),
+					);
+					if (Array.isArray(cost.tiers) && cost.tiers.length > 0) {
+						container.addChild(
+							new Text(
+								theme.fg(
+									"dim",
+									`  (has ${cost.tiers.length} volume-based pricing tier(s) -- see models.json for thresholds)`,
+								),
+								1,
+								0,
+							),
+						);
+					}
+				}
+			}
+
+			container.addChild(new Text("", 1, 0));
+			container.addChild(new Text(theme.fg("dim", "enter/esc close"), 1, 0));
+			container.addChild(new DynamicBorder(borderFn));
+
+			return {
+				render(width: number) {
+					return container.render(width);
+				},
+				invalidate() {
+					container.invalidate();
+				},
+				handleInput(data: string) {
+					if (matchesKey(data, Key.enter) || matchesKey(data, Key.escape)) {
+						done();
+					}
+				},
+			};
+		},
+		{ overlay: true },
+	);
+}
+
 export default function (pi: ExtensionAPI) {
 	pi.registerCommand("session-stats", {
 		description:
 			"Show cumulative token usage and cost for this session (fresh vs. cached input, output, per-model breakdown)",
-		handler: async (_args, ctx) => {
-			const report = formatReport(ctx);
-			if (ctx.hasUI) {
-				ctx.ui.notify(report, "info");
-			} else {
-				// print / json mode: ctx.ui.notify is a no-op, so fall back to
-				// plain stdout so `pi -p` and scripted use still see the output.
-				console.log(report);
+		handler: async (args, ctx) => {
+			// print / json / rpc mode: ctx.ui.custom is unavailable there, so
+			// always fall back to plain stdout so `pi -p` and scripted use
+			// still see the output.
+			if (!ctx.hasUI) {
+				console.log(formatReport(ctx));
+				return;
 			}
+
+			// `/session-stats plain` opts into the old plain-text notify report,
+			// e.g. for copy/paste into a doc, without the overlay chrome.
+			if (args?.trim().toLowerCase() === "plain") {
+				ctx.ui.notify(formatReport(ctx), "info");
+				return;
+			}
+
+			await showStatsOverlay(ctx);
 		},
 	});
 }

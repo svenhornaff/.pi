@@ -1508,3 +1508,55 @@ running with `--model openai-codex/...` or another provider explicitly
 to confirm the guardrails generalize beyond GLM-5.2's phrasing, since
 regex-matching free-text model replies is inherently a little brittle
 per-model.
+
+## 2026-09-01 — LLMHub cache fix verified in production (item 1, closed)
+
+**Found:** the top-priority open item carried since 2026-08-31 — "run one
+real `llmhub/claude-sonnet-4.6` session, confirm `cacheRead > 0`" — was
+blocked on the LLMHub budget, which the PO confirmed would renew
+2026-09-01. A real `cv-review` session on `llmhub/claude-sonnet-4.6`
+(`2026-09-01T11-22-06-302Z_01a05cb4-785e-7201-85c6-76181b5e05c9.jsonl`,
+5 sequential `match-cv` skill invocations, 16 billed turns) became
+available to check today.
+
+**Done:** full turn-by-turn analysis of the session's `usage` blocks,
+written up in `docs/llmhub-cache-fix-validation-2026-09-01.md`.
+
+**Verified:**
+
+- `cacheRead = 0` on the first two turns (cold start), then jumps to
+  24,450 on turn 3 and climbs monotonically within each skill-invocation
+  block (up to 79,304 on the final turn) — the exact pattern the
+  `compat.cacheControlFormat: "anthropic"` fix was meant to produce.
+  Two expected resets (turns 12, 15) line up with new `match-cv`
+  invocations starting a fresh stable prefix, not cache breakage — same
+  pattern already documented for GLM-5.2 in
+  `docs/cache-analysis-2026-08-31-cv-review.md`.
+- Session totals: 344,177 fresh input tokens vs. 565,825 cache-read
+  tokens (62.2% of input-equivalent tokens served from cache), saving
+  an estimated €3.71 (46.6%) vs. a hypothetical no-cache run of the same
+  session (€4.25 actual vs. €7.95 hypothetical).
+- Root cause #2 (`pi-condense` dormant) is also confirmed fixed and
+  active in this session: 2 real `chainsCompressed` events, and
+  `cacheRead` did not reset on pruning activity (no cache/pruner
+  fight), unlike the original incident session which had zero pruner
+  activity across all 235 turns.
+
+**Newly flagged (not blocking, needs a future check):**
+
+- `cacheWrite` was 0 on every turn including the cold start, where the
+  validation plan expected `cacheWrite > 0` as the baseline-write
+  signal. Not investigated further this pass — two plausible
+  explanations noted in the new doc (billing not itemized the same way,
+  or implicit/automatic caching as already seen with GLM-5.2) but
+  neither confirmed.
+- The "bonus" TTL-expiry check (deliberate 6+ minute idle pause) was not
+  exercised — no gap in this session exceeded ~4 minutes. Still open if
+  TTL behavior needs precise characterization.
+
+**Still open:** none from this item — closed. The lifetime
+`session-usage-report.py` aggregate for `llmhub/claude-sonnet-4.6`
+(9,209 turns, `cacheRead = 0`) is unchanged and expected to stay that
+way, since it's dominated by ~9,207 pre-fix turns from before commit
+`f93a8e2` (2026-08-31 09:10:32) — not evidence of a live problem, per
+the same caveat already noted in the 2026-08-31 follow-up entry above.

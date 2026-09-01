@@ -22,40 +22,8 @@
     "otc-internal": {
       "baseUrl": "https://llm-server.llmhub.t-systems.net/v2",
       "api": "openai-completions",
-      "apiKey": "!security find-generic-password -s 'llmhub' -w",
+      "apiKey": "!security find-generic-password -s 'llmhub-GLM' -w",
       "models": [
-        {
-          "id": "Llama-3.3-70B-Instruct",
-          "name": "Meta LLama 3.3 70B (OTC-Internal)",
-          "reasoning": true,
-          "input": [
-            "text"
-          ],
-          "contextWindow": 128000,
-          "maxTokens": 32768,
-          "cost": {
-            "input": 0.2,
-            "output": 0.65,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
-        },
-        {
-          "id": "gpt-oss-120b",
-          "name": "GPT OSS 120B (OTC-Internal)",
-          "reasoning": true,
-          "input": [
-            "text"
-          ],
-          "contextWindow": 131000,
-          "maxTokens": 32000,
-          "cost": {
-            "input": 0.2,
-            "output": 0.65,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
-        },
         {
           "id": "GLM-5.2",
           "name": "GLM 5.2 (OTC-Internal)",
@@ -186,7 +154,7 @@
     "llmhub": {
       "baseUrl": "https://llm-server.llmhub.t-systems.net/v2",
       "api": "openai-completions",
-      "apiKey": "!security find-generic-password -ws 'llmhub'",
+      "apiKey": "!security find-generic-password -ws 'llmhub-dah-key'",
       "models": [
         {
           "id": "claude-sonnet-4.6",
@@ -224,7 +192,9 @@
             "cacheRead": 0,
             "cacheWrite": 0
           },
-          "_costNote": "UNCONFIRMED - LLMHub per-model pricing table is client-side rendered (JS), not scrapable. Verify in apikey.llmhub.t-systems.net portal or invoice and update."
+          "compat": {
+            "cacheControlFormat": "anthropic"
+          }
         },
         {
           "id": "gemini-2.5-pro",
