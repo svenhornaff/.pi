@@ -23,7 +23,7 @@
   "defaultProvider": "otc-internal",
   "defaultModel": "GLM-5.2",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.84.4",
+  "lastChangelogVersion": "0.85.0",
   "theme": "dark",
   "hideThinkingBlock": false,
   "quietStartup": true,

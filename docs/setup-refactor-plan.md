@@ -1560,3 +1560,48 @@ written up in `docs/llmhub-cache-fix-validation-2026-09-01.md`.
 way, since it's dominated by ~9,207 pre-fix turns from before commit
 `f93a8e2` (2026-08-31 09:10:32) — not evidence of a live problem, per
 the same caveat already noted in the 2026-08-31 follow-up entry above.
+
+## 2026-09-04 — Reapply reverted OpenRouter model-ID fix; add otc-internal gpt-oss-120b
+
+**Found:** commit `e4e8564` ("fix(openrouter): correct model IDs and
+compact enabledModels") stripped a spurious `openrouter/` prefix from
+three OpenRouter model IDs in `models.json` (OpenRouter slugs are
+`vendor/model`, verified against `/api/v1/models`; the harness had been
+using e.g. `openrouter/anthropic/claude-opus-5` instead of
+`anthropic/claude-opus-5`), rotated the LLMHub API key reference from
+`llmhub-dah-key` to `llmhub-tsyidp-key`, and added a new `otc-internal`
+model (`gpt-oss-120b`). That commit was reverted 15 minutes later in
+`0d63430` with no message explaining why. Neither commit added a
+decision-log entry, so the reasoning for the revert was lost. On
+review, no evidence was found that the stripped-prefix IDs, the key
+rotation, or the new model entry were wrong — the revert is treated as
+accidental/premature, not a deliberate correction.
+
+**Done:** reapplied the model-ID and key-rotation part of `e4e8564`
+(`anthropic/claude-opus-5`, `anthropic/claude-sonnet-5`,
+`z-ai/glm-5.3` in the `openrouter` provider; `llmhub-tsyidp-key` in the
+`llmhub` provider; new `otc-internal/gpt-oss-120b` entry) plus the
+`lastChangelogVersion` bump to `0.85.0`. Deliberately did **not** reapply
+e4e8564's `enabledModels` collapse to `openrouter/*` — that part is left
+for a separate decision since it silently changes which OpenRouter models
+are selectable and wasn't the focus of this pass. Took timestamped
+backups (`agent/models.json.bak.20260904-151544`,
+`agent/settings.json.bak.20260904-151544`) before editing.
+
+**Verified:**
+
+- `python3 -c "import json; json.load(open('agent/models.json'))"` and
+  same for `settings.json` and `web-search.json` — all pass.
+- `security find-generic-password -ws 'llmhub-tsyidp-key'` resolves to a
+  live secret in the Keychain (rotation target exists).
+- `grep -n "apiKey" agent/models.json web-search.json` — every entry is
+  a `!security find-generic-password` reference, no raw key.
+- LLMHub Claude entries (`claude-sonnet-4.6`, `claude-opus-4.8`) still
+  carry `compat.cacheControlFormat: "anthropic"` — untouched by this
+  change, confirmed by direct read after edit.
+- `./scripts/smoke-test-extensions.sh` — 10/10 passed.
+
+**Still open:** whether to also collapse `enabledModels`'s `openrouter`
+entries to the `openrouter/*` wildcard (as `e4e8564` did, matching every
+other provider's convention) is an explicit follow-up decision, not
+made in this pass.
