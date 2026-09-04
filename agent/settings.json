@@ -23,7 +23,7 @@
   "defaultProvider": "otc-internal",
   "defaultModel": "GLM-5.2",
   "defaultThinkingLevel": "medium",
-  "lastChangelogVersion": "0.85.0",
+  "lastChangelogVersion": "0.84.4",
   "theme": "dark",
   "hideThinkingBlock": false,
   "quietStartup": true,
@@ -31,7 +31,9 @@
   "enabledModels": [
     "ollama/*",
     "otc-internal/*",
-    "openrouter/*",
+    "openrouter/anthropic/claude-sonnet-4.6",
+    "openrouter/anthropic/claude-sonnet-5",
+    "openrouter/moonshotai/kimi-k2.6",
     "ai-engineer/*",
     "llmhub/*"
   ],

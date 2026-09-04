@@ -39,22 +39,6 @@
             "cacheRead": 0,
             "cacheWrite": 0
           }
-        },
-        {
-          "id": "gpt-oss-120b",
-          "name": "GPT OSS 120B (OTC-Internal)",
-          "reasoning": true,
-          "input": [
-            "text"
-          ],
-          "contextWindow": 131072,
-          "maxTokens": 64000,
-          "cost": {
-            "input": 0.2,
-            "output": 0.65,
-            "cacheRead": 0,
-            "cacheWrite": 0
-          }
         }
       ]
     },
@@ -64,7 +48,7 @@
       "apiKey": "!security find-generic-password -ws 'openrouter-api-key'",
       "models": [
         {
-          "id": "anthropic/claude-opus-5",
+          "id": "openrouter/anthropic/claude-opus-5",
           "name": "Claude Opus 5 (OpenRouter)",
           "reasoning": true,
           "input": [
@@ -83,7 +67,7 @@
           }
         },
         {
-          "id": "anthropic/claude-sonnet-5",
+          "id": "openrouter/anthropic/claude-sonnet-5",
           "name": "Claude Sonnet 5 (OpenRouter)",
           "reasoning": true,
           "input": [
@@ -104,7 +88,7 @@
           }
         },
         {
-          "id": "z-ai/glm-5.3",
+          "id": "openrouter/z-ai/glm-5.3",
           "name": "GLM-5.3 (OpenRouter)",
           "reasoning": true,
           "input": [
@@ -170,7 +154,7 @@
     "llmhub": {
       "baseUrl": "https://llm-server.llmhub.t-systems.net/v2",
       "api": "openai-completions",
-      "apiKey": "!security find-generic-password -ws 'llmhub-tsyidp-key'",
+      "apiKey": "!security find-generic-password -ws 'llmhub-dah-key'",
       "models": [
         {
           "id": "claude-sonnet-4.6",
