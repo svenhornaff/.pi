@@ -1313,3 +1313,64 @@ assessment (§3, §5 items 6–7) but not actioned in this pass.
 robust smoke test) plus one confirmed-clean audit (cache-compat flags),
 while every machine-identity-specific piece of `t-mac` stayed on that
 branch only, per the original separation requirement.
+
+## Implementation log — 2026-09-07: fix broken `openrouter/anthropic/claude-sonnet-5` (0/10 smoke test)
+
+**Found:** `scripts/smoke-test-extensions.sh` failed **0/10** — every check, because every
+model call to the default smoke-test model `openrouter/anthropic/claude-sonnet-5`
+returned an **HTML 404 from openrouter.ai** (the website's not-found page, not an API
+JSON error). Root-cause chain, verified step by step:
+
+1. OpenRouter's catalog now advertises Claude models over their Anthropic-compat
+   endpoint, so pi's cached `agent/models-store.json` entry for
+   `anthropic/claude-sonnet-5` carries `"api": "anthropic-messages", "baseUrl":
+   "https://openrouter.ai/api"` (while openai-completions models use
+   `https://openrouter.ai/api/v1`).
+2. pi's `applyModelsJson` merge (dist bundle, verified by reading the source) maps
+   every catalog model to `config.baseUrl ?? model.baseUrl` — the provider-level
+   `baseUrl` in our `agent/models.json` (`https://openrouter.ai/api/v1`) **overrides**
+   the catalog's per-model baseUrl while keeping the per-model `api`.
+3. The Anthropic-messages client appends `/v1/messages`, producing
+   `https://openrouter.ai/api/v1/v1/messages` → confirmed nonexistent via
+   `curl -X POST` (404 text/html), while the real endpoint
+   `https://openrouter.ai/api/v1/messages` exists (401 application/json without auth).
+4. Reproduced independently of the script: `pi -p --no-tools --model
+   openrouter/anthropic/claude-sonnet-5 "reply ok"` failed with the same HTML 404.
+   The same session's other OpenRouter models (`z-ai/glm-5.3`) worked, so the provider
+   and key were fine — only anthropic-messages-API models were affected.
+
+**Decided and applied:** removed the `"baseUrl": "https://openrouter.ai/api/v1"` line
+from the `openrouter` provider in `agent/models.json` (backup taken first:
+`agent/models.json.bak.20260907-184553`, gitignored). The provider block keeps
+`apiKey` (Keychain reference) and `api`, so pi's "must specify baseUrl, headers,
+compat, modelOverrides, or models" validation still passes, and each catalog model
+now uses its own correct baseUrl (`/api` for anthropic-messages, `/api/v1` for
+openai-completions — confirmed both values present per-model in models-store.json
+before editing).
+
+**Verified:**
+
+- `python3 -c "import json; json.load(open('agent/models.json'))"` — clean.
+- `pi -p --no-tools --model openrouter/anthropic/claude-sonnet-5 "reply ok"` → `ok`.
+- `pi -p --no-tools --model openrouter/z-ai/glm-5.3 "reply ok"` → `ok` (no
+  regression for openai-completions models whose effective baseUrl is unchanged).
+- `scripts/smoke-test-extensions.sh` → **10 passed, 0 failed** (was 0/10).
+
+**Notes for follow-up (not actioned):**
+
+- This is arguably an upstream pi bug worth reporting: `applyModelsJson` should not
+  blanket-override a catalog model's `baseUrl` when the catalog supplies a
+  per-model `api` that expects a different base path (anthropic-messages models
+  under a provider configured for openai-completions URLs). pi 0.85.1 is current
+  (`npm view` confirms), so no released fix exists yet.
+- pi-lens `lens_diagnostics mode=full` findings on this workspace remain
+  non-blocking and unchanged in kind: "Cannot find module
+  `@earendil-works/pi-coding-agent` / `node:fs`" TS2307 warnings across
+  `agent/extensions/*.ts` (environment artifact — no tsconfig and no pi dev-dep in
+  `agent/extensions/`, while pi injects these modules at runtime; the LSP output
+  itself says "add agent/** to a tsconfig for authoritative checking"), plus style
+  hints (nested ternaries, `any` types) concentrated in `obsidian-sync.ts`. No
+  runtime errors — all extensions load cleanly in the smoke test.
+- `agent/settings.json` carries an uncommitted pi-written change
+  (`lastChangelogVersion` 0.84.4 → 0.85.1, plus a dropped trailing newline) —
+  benign churn from pi itself; commit as-is or leave to pi.
