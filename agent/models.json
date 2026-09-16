@@ -64,79 +64,52 @@
       "models": [
         {
           "id": "anthropic/claude-opus-5",
+          "baseUrl": "https://openrouter.ai/api/v1",
           "name": "Claude Opus 5 (OpenRouter)",
           "reasoning": true,
-          "input": [
-            "text"
-          ],
+          "input": ["text", "image"],
           "contextWindow": 1000000,
-          "maxTokens": 32768,
-          "cost": {
-            "input": 5,
-            "output": 25,
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5
-          },
-          "compat": {
-            "cacheControlFormat": "anthropic"
-          }
+          "maxTokens": 128000,
+          "thinkingLevelMap": { "xhigh": "xhigh", "max": "max" },
+          "cost": { "input": 5, "output": 25, "cacheRead": 0.5, "cacheWrite": 6.25 },
+          "compat": { "thinkingFormat": "openrouter", "cacheControlFormat": "anthropic" }
         },
         {
           "id": "anthropic/claude-sonnet-5",
+          "baseUrl": "https://openrouter.ai/api/v1",
           "name": "Claude Sonnet 5 (OpenRouter)",
           "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
+          "input": ["text", "image"],
           "contextWindow": 1000000,
           "maxTokens": 128000,
-          "cost": {
-            "input": 2,
-            "output": 10,
-            "cacheRead": 0.2,
-            "cacheWrite": 2.5
-          },
-          "compat": {
-            "thinkingFormat": "openrouter",
-            "cacheControlFormat": "anthropic"
-          }
+          "thinkingLevelMap": { "xhigh": "xhigh", "max": "max" },
+          "cost": { "input": 2, "output": 10, "cacheRead": 0.2, "cacheWrite": 2.5 },
+          "compat": { "thinkingFormat": "openrouter", "cacheControlFormat": "anthropic" }
         },
         {
           "id": "z-ai/glm-5.3",
+          "baseUrl": "https://openrouter.ai/api/v1",
           "name": "GLM-5.3 (OpenRouter)",
           "reasoning": true,
-          "input": [
-            "text"
-          ],
+          "input": ["text"],
           "contextWindow": 1048576,
-          "maxTokens": 131072,
-          "cost": {
-            "input": 1.4,
-            "output": 4.4,
-            "cacheRead": 0.26,
-            "cacheWrite": 2.5
-          },
-          "compat": {
-            "thinkingFormat": "openrouter",
-            "cacheControlFormat": "anthropic"
-          }
+          "maxTokens": 262144,
+          "cost": { "input": 1.4, "output": 4.4, "cacheRead": 0.14, "cacheWrite": 0 },
+          "compat": { "thinkingFormat": "openrouter", "supportsDeveloperRole": false }
         },
         {
           "id": "moonshotai/kimi-k2.6",
+          "baseUrl": "https://openrouter.ai/api/v1",
           "name": "Kimi K2.6 (OpenRouter)",
           "reasoning": true,
-          "input": [
-            "text",
-            "image"
-          ],
+          "input": ["text", "image"],
           "contextWindow": 262144,
-          "maxTokens": 16384,
-          "cost": {
-            "input": 0.95,
-            "output": 4,
-            "cacheRead": 0.16,
-            "cacheWrite": 0
+          "maxTokens": 235929,
+          "cost": { "input": 0.95, "output": 4, "cacheRead": 0.16, "cacheWrite": 0 },
+          "compat": {
+            "thinkingFormat": "openrouter",
+            "supportsDeveloperRole": false,
+            "requiresReasoningContentOnAssistantMessages": true
           }
         }
       ]
