@@ -59,7 +59,6 @@
       ]
     },
     "openrouter": {
-      "baseUrl": "https://openrouter.ai/api/v1",
       "api": "openai-completions",
       "apiKey": "!security find-generic-password -ws 'openrouter-api-key'",
       "models": [
