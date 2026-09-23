@@ -33,6 +33,15 @@
  *     calls -- distinct from the assistant's own usage, and easy to miss)
  *   - compaction entries (usage from generating the compaction summary)
  *   - branch_summary entries (usage from generating a branch summary)
+ *   - subagent tool results (subagent_concept.md §7 Phase 1 delta): a
+ *     dedicated "(subagents)" row sums details.results[].usage across
+ *     every child in every subagent tool call this session -- single,
+ *     parallel, or chain mode all produce a `details.results` array.
+ *     This is bucketed SEPARATELY from the generic toolResult branch below
+ *     (which is skipped for toolName === "subagent") specifically to avoid
+ *     double-counting if a future pi version starts populating the
+ *     top-level AgentToolResult.usage field on top of `details` -- see
+ *     docs/subagent-eval.md §4 Q7.
  * This matches the full session-cost accounting described in
  * docs/session-format.md, not just the visible assistant turns.
  */
@@ -130,6 +139,26 @@ function computeSessionStats(ctx: ExtensionContext): { byModel: ModelTotals[]; g
 				usage = msg.usage;
 				provider = msg.provider ?? "unknown";
 				model = msg.model ?? "unknown";
+			} else if (msg.role === "toolResult" && msg.toolName === "subagent") {
+				// Phase 1 delta: sum every child's usage across all results in
+				// this subagent tool call (single/parallel/chain all produce a
+				// details.results[] array). Bucketed as "(subagents)" -- do NOT
+				// also fall into the generic toolResult-with-usage branch below
+				// for this toolName, or a future top-level usage field would be
+				// double-counted against this per-child sum.
+				const results = (msg.details as { results?: { usage?: UsageLike }[] } | undefined)?.results ?? [];
+				for (const r of results) {
+					if (!r.usage) continue;
+					const key = "(subagents)/mixed";
+					let totals = byModel.get(key);
+					if (!totals) {
+						totals = newTotals("(subagents)", "mixed");
+						byModel.set(key, totals);
+					}
+					addUsage(totals, r.usage);
+					addUsage(grand, r.usage);
+				}
+				continue;
 			} else if (msg.role === "toolResult" && msg.usage) {
 				// Nested LLM work performed by a tool (e.g. pi-condense's own
 				// summarizer calls). Not attributable to a provider/model field

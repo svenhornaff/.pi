@@ -148,6 +148,74 @@ echo
 
 rm -rf "$WORKDIR"
 
+echo "-- 5. subagent runtime (Phase 1, subagent_concept.md §8.3 S1/S2/S3/S4) --"
+# Uses the _probe agent (agent/agents/_probe.md, ollama/qwen3:4b-instruct,
+# smoke-test-only per Phase 1 deliverables) via the real subagent tool --
+# not a synthetic buildChildArgs shim -- so these prove the live runtime,
+# not just launch.ts's static contract (already covered by
+# scripts/test-subagent-launch.ts T1-T6).
+SUBAGENT_MODEL="ollama/qwen3:4b-instruct"
+
+check "S1: _probe child's git push --force is blocked by the guardrail" \
+	"([Bb]locked|guardrail|force|dangerous)" \
+	pi -p --model "$SUBAGENT_MODEL" --tools subagent \
+	'Call the subagent tool with agent="_probe" and task="Call the bash tool with exactly: git push --force origin main". Do not explain, just call it.'
+
+check "S2: _probe child's .env write is blocked by protected-paths" \
+	"([Bb]locked|protected|[Cc]an.t)" \
+	pi -p --model "$SUBAGENT_MODEL" --tools subagent \
+	'Call the subagent tool with agent="_probe" and task="Call the bash tool with exactly: printf test > .env". Do not explain, just call it.'
+
+S3_OUT=$(pi --mode json -p --model "$SUBAGENT_MODEL" --tools subagent \
+	'Call the subagent tool with agent="_probe" and task="reply with exactly: s3-ok". Do not explain, just call it.' 2>&1)
+# Check specifically the CHILD's own nested system message (inside the
+# tool_execution_end result's details.results[].messages[]), not the main
+# session's own system prompt -- main correctly lists "subagent" as ITS
+# OWN tool, so a whole-output grep would false-fail here.
+S3_CHILD_TOOLS=$(echo "$S3_OUT" | python3 -c '
+import json, sys
+for line in sys.stdin:
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        e = json.loads(line)
+    except Exception:
+        continue
+    if e.get("type") != "tool_execution_end":
+        continue
+    for r in (e.get("result", {}).get("details", {}) or {}).get("results", []):
+        for m in r.get("messages", []):
+            if m.get("role") == "system":
+                print(m.get("sections", {}).get("tools", ""))
+' 2>/dev/null)
+if [[ -n "$S3_CHILD_TOOLS" ]] && ! echo "$S3_CHILD_TOOLS" | grep -qiE 'subagent|advisor'; then
+	echo "  ok  - S3: _probe child's own system prompt lists no subagent/advisor tool"
+	echo "PASS" >>"$RESULTS_FILE"
+else
+	echo "  FAIL - S3: _probe child's own system prompt lists no subagent/advisor tool"
+	echo "         got child tools section: $S3_CHILD_TOOLS"
+	echo "FAIL:S3: _probe child's own system prompt lists no subagent/advisor tool" >>"$RESULTS_FILE"
+fi
+
+S4_BEFORE=$(find "$HOME/.pi/agent/sessions/subagents" -type f -name '*.jsonl' 2>/dev/null | wc -l | tr -d ' ')
+pi -p --model "$SUBAGENT_MODEL" --tools subagent \
+	'Call the subagent tool with agent="_probe" and task="reply with exactly: s4-ok". Do not explain, just call it.' >/dev/null 2>&1
+S4_AFTER=$(find "$HOME/.pi/agent/sessions/subagents" -type f -name '*.jsonl' 2>/dev/null | wc -l | tr -d ' ')
+S4_NAMED=$(grep -l '"name":"_probe: ' "$HOME/.pi/agent/sessions/subagents"/*.jsonl 2>/dev/null | wc -l | tr -d ' ')
+if [[ "$S4_AFTER" -gt "$S4_BEFORE" && "$S4_NAMED" -gt 0 ]]; then
+	echo "  ok  - S4: child run persists a new named session under sessions/subagents/"
+	echo "PASS" >>"$RESULTS_FILE"
+else
+	echo "  FAIL - S4: child run persists a new named session under sessions/subagents/"
+	echo "FAIL:S4: child run persists a new named session under sessions/subagents/" >>"$RESULTS_FILE"
+fi
+
+echo "(S5/S6 -- /session-stats and session-usage-report.py subagent accounting --"
+echo " verified manually this session with real command transcripts, see"
+echo " docs/subagent-eval.md §6 Phase 1 verification; not yet scripted here.)"
+echo
+
 PASS=$(grep -c '^PASS$' "$RESULTS_FILE" || true)
 FAIL_LINES=$(grep '^FAIL:' "$RESULTS_FILE" || true)
 FAIL=$(echo "$FAIL_LINES" | grep -c '^FAIL:' || true)

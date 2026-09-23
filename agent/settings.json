@@ -24,7 +24,7 @@
   "defaultModel": "anthropic/claude-sonnet-5",
   "defaultThinkingLevel": "medium",
   "quietStartup": true,
-  "lastChangelogVersion": "0.85.1",
+  "lastChangelogVersion": "0.87.1",
   "theme": "dark",
   "hideThinkingBlock": false,
   "enabledModels": [

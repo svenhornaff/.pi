@@ -1374,3 +1374,203 @@ before editing).
 - `agent/settings.json` carries an uncommitted pi-written change
   (`lastChangelogVersion` 0.84.4 → 0.85.1, plus a dropped trailing newline) —
   benign churn from pi itself; commit as-is or leave to pi.
+
+## Implementation log — 2026-09-23: subagent layer, Phase 0 (baseline & prerequisites)
+
+**Found:** `subagent_concept.md` v1.0 proposes a phased subagent layer, gated so
+"a phase does not start until the previous phase's *Done When* is met." Phase 0
+(baseline benchmark set, `/review-fresh` control group, Q1–Q6 technical probes)
+had not been started — no `docs/subagent-eval.md`, no `agent/prompts/review-fresh.md`.
+Also found: the concept doc's header assumes pi v0.85.1; the machine actually runs
+**v0.87.1** (`pi --version`, matches `agent/settings.json` `lastChangelogVersion`).
+
+**Decided (with the user):** do Phase 0 before any Phase 1 code, per the doc's own
+gate; when Phase 1 vendors the reference `subagent` extension, source it from the
+installed **v0.87.1** examples, not the doc's stated v0.85.1.
+
+**Done this session:**
+
+- Added `agent/prompts/review-fresh.md` (Appendix B.1 draft, unchanged) — the
+  branch-based review control group.
+- Added `docs/subagent-eval.md`: the 10-task benchmark set (3 exploration/3
+  feature/2 bugfix/2 review-only across `bulliexplorer`, `doc-manager`,
+  `idp-docs`, plus one bugfix task scoped to `~/.pi` itself), each with acceptance
+  criteria; a baseline-metrics table (unfilled); a `/review-fresh` results table
+  (unfilled); and the Q1–Q6 probe log below.
+- Ran all six Phase 0 technical probes for real (not simulated) and recorded
+  command + output evidence in `docs/subagent-eval.md` §4:
+  - **Q1** `-ne` drops every `settings.json` package (pi-lens, pi-web-access,
+    advisor-pi, cache-warm, Plannotator, statusline-pi, rpiv-ask-user-question) —
+    confirmed via the JSON event stream's `toolsAdded` array containing only the
+    4 built-in tools under `-ne`.
+  - **Q2** explicit `-e <abs path>` reloads and behaviourally enforces a guardrail
+    even under `-ne` — confirmed by an A/B: with `-e permission-gate.ts
+    -e protected-paths.ts` a forced `git push --force origin main` tool call was
+    blocked; without `-e` (still `-ne`) the same forced call actually executed
+    (real git error, not a guardrail message). Verified no push reached the
+    remote (`git log`/`git branch --show-current` unchanged).
+  - **Q3** `typebox` does **not** resolve from `agent/extensions/` today
+    (`require.resolve('typebox')` → `MODULE_NOT_FOUND`; it only exists under pi's
+    own install). **Actionable for Phase 1:** `agent/extensions/package.json`
+    must add `typebox` as an explicit dependency before vendoring `index.ts`.
+  - **Q4** superseded by the version decision above — no v0.85.1 diff needed;
+    Phase 1's `UPSTREAM.md` should record v0.87.1 as the pinned tag.
+  - **Q5** `agent/auth.json`'s `openai-codex` entry is OAuth
+    (access/refresh/accountId, no raw key) — subscription-backed, not a metered
+    key in this setup; luna/terra/sol tier ordering (cheap→expensive) matches
+    the concept doc's existing model assignments, no table change needed.
+  - **Q6** `--session-dir` + `--name` work together under `-p --mode json`: the
+    session file lands directly under the given dir with a
+    `<timestamp>_<uuid>.jsonl` name, and `--name` is recorded in the
+    `session_info` event (`grep` confirmed) — exactly what `session-usage-report.py`
+    (`rglob("*.jsonl")`) and a future `/session-stats` delta need. Probe directory
+    removed after the check; no stray file left under `~/.pi/agent/sessions/`.
+- Updated `subagent_concept.md` Phase 0 section: ticked the checklist items that
+  are actually done, added a "Leftover" subsection for what remains (baseline
+  metric collection on all 10 tasks; `/review-fresh` used ≥ 2× with a precision
+  number; the resulting go/no-go note), matching `docs/subagent-eval.md` §6.
+
+**Verified:**
+
+- `agent/prompts/review-fresh.md` and `docs/subagent-eval.md` created; content
+  matches this log (`ls agent/prompts/review-fresh.md docs/subagent-eval.md`).
+- Q1–Q6 probe commands and their exact output are pasted in
+  `docs/subagent-eval.md` §4, each independently re-runnable.
+- `git status --short` checked before writing this entry — no `auth.json`,
+  `*-store.json`, `sessions/`, or `.bak` files staged by this pass.
+
+**Explicitly not done in this session (leftover, tracked in both
+`docs/subagent-eval.md` §6 and `subagent_concept.md` Phase 0):**
+
+- Baseline single-agent metrics for the 10 benchmark tasks (real, multi-hour
+  effort against the trusted repos — deliberately not run unattended).
+- `/review-fresh` has not yet actually been used on any task (template exists,
+  0 of the required ≥ 2 uses done).
+- The Phase 0 go/no-go note (blocked on the item above) — so Phase 2's reviewer
+  entry criterion is still undecided, not defaulted either way.
+
+**Next:** either complete the Phase 0 leftovers above (real task runs), or, if
+the user chooses to proceed anyway, explicitly re-confirm that decision before
+starting Phase 1 — the phase gate in `subagent_concept.md` is intentionally not
+satisfied yet.
+
+## Implementation log — 2026-09-23: subagent layer, Phase 1 (runtime foundation)
+
+**Found:** Phase 0 was partially done (see the prior entry above); the user
+then explicitly directed moving to Phase 1 before the two remaining Phase 0
+data-collection leftovers (10-task baseline, `/review-fresh` x2) were
+finished. Logged as a deliberate, explicit decision to proceed with that
+gate knowingly unmet, not a silent skip.
+
+**Done this session (all verified by running the actual command, not
+assumed working):**
+
+- **`agent/extensions/subagent/`** vendored from the installed pi
+  **v0.87.1** reference extension (not v0.85.1, per the Phase 0 version
+  correction) with the Phase 1 local deltas D1-D8 applied in-place:
+  - `launch.ts` (NEW): pure, dependency-free `buildChildArgs()` implementing
+    subagent_concept.md \u00a73.2. All 6 deterministic test groups (T1-T6, plus
+    a name-truncation sanity check) pass:
+    `node --experimental-strip-types scripts/test-subagent-launch.ts` \u2192
+    **22 passed, 0 failed**.
+  - `agents.ts`: added D2 (`extensions:`, `timeoutMs` frontmatter, resolved
+    relative to `~/.pi/agent`) and D3 (agents missing a non-empty `tools:`
+    are rejected during discovery, not defaulted; surfaced via a new
+    `rejected` field on `AgentDiscoveryResult`).
+  - `index.ts`: replaced the vendored inline `args.push(...)` sequence with
+    a single call to `buildChildArgs`; removed `--no-session` entirely;
+    added D2 timeout enforcement (SIGTERM then SIGKILL after a 5s grace
+    period); added a D4 depth check via `PI_SUBAGENT_DEPTH` before calling
+    `buildChildArgs` (which itself refuses at depth >= 1); replaced the
+    tool `description` with the \u00a76 delegation policy verbatim (D6); added
+    a `child: $x.xx, N/M tok, model` cost line to every returned result
+    text (D7). Two vendored patterns (`Record<string, any>`, a
+    `.map(async () => {...})` worker-pool loop) were mechanically rewritten
+    to pass this repo's write-time lint without changing behavior \u2014 see
+    `UPSTREAM.md` for exactly what changed and why.
+  - `UPSTREAM.md` (NEW): pinned version, "no upstream git SHA available"
+    caveat (vendored from an installed npm package, not a git checkout),
+    delta table, re-vendor procedure for the next pi upgrade.
+- **`agent/extensions/package.json`**: added `typebox@1.3.27` (matches the
+  version pinned in pi's own `package.json`) and `"type": "module"`.
+  `npm install` run; confirmed `import { Type } from "typebox"` now
+  resolves (`node --experimental-strip-types -e "import('typebox')..."` \u2192
+  `Type present: object`) \u2014 closes the Phase 0 Q3 gap.
+- **`agent/agents/_probe.md`** (NEW): smoke-test-only agent (`tools: read,
+  bash`, `ollama/qwen3:4b-instruct`, `timeoutMs: 60000`), per the Phase 1
+  deliverables list. To be deleted at the end of Phase 2.
+- **`scripts/test-subagent-launch.ts`** (NEW): see above, 22/22 green.
+- **`scripts/lint-agents.py`** (NEW): `python3 scripts/lint-agents.py` \u2192
+  `1/1 agent files passed lint`. Resolved the real D3-vs-`_probe` conflict
+  the advisor flagged (ADR-3 restricts `bash` to `verifier`; `_probe` is a
+  documented, narrow, smoke-test-only exception in the lint code itself,
+  not a relaxation of ADR-3 for any real persona).
+- **`agent/extensions/session-stats.ts`**: added a dedicated `(subagents)`
+  row that sums `details.results[].usage` for `toolName === "subagent"`,
+  explicitly bucketed separately from the generic tool-internal-usage
+  branch to avoid future double-counting (see the Q7 note in the code
+  comment and `docs/subagent-eval.md`).
+- **`scripts/smoke-test-extensions.sh`**: added a new "5. subagent runtime"
+  section with S1 (git push force-blocked in a real `_probe` child), S2
+  (`.env` write blocked), S3 (child's own system prompt lists no
+  subagent/advisor tool \u2014 checked via the nested child message in the JSON
+  stream, not the main session's own tool list, after an initial false
+  failure from grepping the whole output), S4 (child run persists a new
+  named session under `sessions/subagents/`). Full run: **14 passed, 0
+  failed** (10 pre-existing + 4 new).
+- **README.md**: new "Subagents" extension-table section, two new
+  `scripts/` table rows (`test-subagent-launch.ts`, `lint-agents.py`).
+- **AGENTS.md**: new "Source layout" entry for `agent/extensions/subagent/`
+  and new **Rule 5** (child launch arg changes require a
+  `test-subagent-launch.ts` case, and a smoke case if guardrails/
+  recursion/persistence are touched).
+
+**Verified live, beyond the scripted smoke cases (real end-to-end runs,
+not simulated):**
+
+- A real `_probe` child, invoked via the actual `subagent` tool (not a
+  synthetic shim), replied correctly and the tool's returned text included
+  the D7 cost line: `probe-ok\n\nchild: $0.0000, 4.2k/3 tok,
+  ollama/qwen3:4b-instruct`.
+- The same child's session persisted under
+  `agent/sessions/subagents/<timestamp>_<uuid>.jsonl` with
+  `"name":"_probe: reply with exactly: probe-ok"` (grepped directly).
+- `/session-stats`, run via `--session <path>` resume after a subagent
+  call, showed a distinct `(subagents)/mixed` row (turns=1,
+  input=13/cacheRead=4186/output=5) separate from and NOT inflating the
+  main model's own row (turns=2, input=69/cacheRead=7806/output=78) \u2014
+  Phase 1's S5 Done-When bullet, confirmed with a real transcript.
+- `python3 scripts/session-usage-report.py`, re-run after several live
+  child runs accumulated under `agent/sessions/subagents/`: confirmed the
+  script only ever sums `role == "assistant"` messages per session file
+  (grepped its own source, `scripts/session-usage-report.py`) and never
+  reads `toolResult`/`details` \u2014 so a child's own session file is counted
+  exactly once and the parent's file was never carrying the child's tokens
+  in the first place. **S6 satisfied by the script's existing design, no
+  code change needed there.**
+- `./scripts/smoke-test-extensions.sh` (the pre-existing 10 baseline
+  checks) still green after all of the above \u2014 confirmed the new
+  ambiently-loaded `agent/extensions/subagent/index.ts` does not break a
+  normal main session.
+
+**Explicitly not done in this session (Phase 1 leftover):**
+
+- Live smoke cases exist for S1-S4 only; **S5/S6 were verified manually
+  with real transcripts (pasted above and reproducible) but not scripted**
+  into `smoke-test-extensions.sh` \u2014 scripting the `--session`-resume +
+  `/session-stats` dance robustly is more involved than the S1-S4 cases and
+  was deferred rather than rushed.
+- `scripts/fixtures/subagent-repo/` (the seeded-bug fixture for later
+  phases' S11/S12/S14) was not created \u2014 not needed until Phase 4/5.
+- The interrupted Phase 0 `doc-manager` baseline leftover (see the prior
+  entry) remains open; its finding about project-local extension conflicts
+  was folded into this phase's rationale for `-ne` but the baseline tasks
+  themselves were not re-attempted.
+- Phase 1's own Done-When README/AGENTS.md/decision-log bullet is satisfied
+  by this entry; the "one week of normal use" and Phase-6 aggregate
+  criteria in the initiative-wide Definition of Done (\u00a712) are, by
+  construction, not yet reachable.
+
+**Next:** Phase 2 (first read-only specialist, `explorer.md`, plus
+`git-diff-tool.ts` and removing `_probe.md`) per `subagent_concept.md` \u00a77,
+gated on this phase's Done When (see the tick-off in that file).

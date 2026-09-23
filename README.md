@@ -101,6 +101,35 @@ cd searxng && docker compose up -d
 | `tool-counter-widget.ts`, `theme-cycler.ts`, `welcome-dashboard.ts`, `session-name.ts` | TUI ergonomics |
 | `status-footer.ts.disabled-superseded-by-statusline-pi` | Retired 2026-08-29 — superseded by the `statusline-pi` npm package below, which covers the same ground plus CPU/MEM, tokens/sec, PR number, and live cost. Kept on disk, renamed, for reference. |
 
+### Subagents (`agent/extensions/subagent/`, added 2026-09-23, Phase 1)
+
+A `subagent` tool for the **main session only** — delegates a task to a
+repo-owned persona (`agent/agents/*.md`) run as a separate, isolated `pi`
+child process. Vendored from pi's own reference extension (v0.87.1) with
+local hardening; see `agent/extensions/subagent/UPSTREAM.md` for the exact
+delta list and `subagent_concept.md` for the full design/phase plan.
+
+Every child is invoked `-ne` (no ambient packages/extensions) plus the two
+guardrail extensions (`permission-gate.ts`, `protected-paths.ts`) appended
+unconditionally, an explicit non-empty `--tools` list, and a persisted,
+named session under `agent/sessions/subagents/` — never `--no-session`.
+Children cannot recurse (`-ne` plus an explicit `PI_SUBAGENT_DEPTH` guard),
+cannot load `advisor`, and their cost is reported back on every call
+(`child: $x.xx, N/M tok, model`) and rolled up into `/session-stats` as a
+separate "(subagents)" row.
+
+As of Phase 1 there is exactly one agent, `agent/agents/_probe.md`, and it
+is smoke-test-only (deleted at the end of Phase 2). Real personas
+(explorer, reviewer, architect, verifier, security, researcher) are added
+in later phases per `subagent_concept.md` §7.
+
+| File | Purpose |
+|---|---|
+| `agent/extensions/subagent/index.ts` | The tool itself (vendored + local deltas D1-D8) |
+| `agent/extensions/subagent/agents.ts` | Agent frontmatter discovery/parsing (vendored + D2/D3) |
+| `agent/extensions/subagent/launch.ts` | Pure, dependency-free `buildChildArgs()` — the only place child argv/env is assembled |
+| `agent/subagent-child/` | Child-only tools (not auto-discovered into the main session) — empty until Phase 2's `git-diff-tool.ts` |
+
 ### npm packages (`agent/settings.json` → `packages`)
 
 | Package | Purpose |
@@ -124,6 +153,8 @@ run it after editing any extension.
 | `smoke-test-extensions.sh` | Verifies the guardrail extensions still block/allow the right things |
 | `archive-old-sessions.sh` | Archives session transcripts older than 90 days (`--dry-run` supported) |
 | `session-usage-report.py` | Aggregates historical cost/tokens by provider/model across all sessions; flags zero-cache-read sessions that indicate a caching misconfiguration |
+| `test-subagent-launch.ts` | Deterministic tests (no model calls) for `agent/extensions/subagent/launch.ts`'s `buildChildArgs` — run with `node --experimental-strip-types scripts/test-subagent-launch.ts` |
+| `lint-agents.py` | Static frontmatter lint for `agent/agents/*.md` (required fields, forbidden tools, model allowlist/family rules) — run with `python3 scripts/lint-agents.py` |
 
 ## Security & what's excluded
 

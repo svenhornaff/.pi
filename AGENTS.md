@@ -113,6 +113,19 @@ python3 -c "import json; json.load(open('web-search.json'))"
   fan-out as the *default*; use the `/high-stakes-web-research` prompt
   template (`agent/prompts/`) instead when full multi-provider coverage is
   actually warranted.
+- `agent/extensions/subagent/` (added 2026-09-23, Phase 1 of
+  `subagent_concept.md`) — vendored from pi's reference `subagent`
+  extension (pinned v0.87.1, see `UPSTREAM.md` in that dir), main-session-
+  only. `launch.ts` is the single, pure, unit-tested place child argv/env
+  is built (`buildChildArgs`) — never add a second `spawn()` call site that
+  bypasses it. Every child is `-ne` plus `permission-gate.ts` and
+  `protected-paths.ts` appended unconditionally, an explicit non-empty
+  `--tools`, and a persisted `--session-dir`/`--name` under
+  `agent/sessions/subagents/` — never `--no-session`. `agent/agents/*.md`
+  personas are repo-owned (user scope by default); `agent/subagent-child/`
+  holds child-only tools and must NOT be auto-discovered the way
+  `agent/extensions/*.ts` is. `_probe.md` is smoke-test-only, deleted at
+  the end of Phase 2 — do not build real work on it.
 
 ## Code style
 
@@ -215,3 +228,10 @@ Before treating any extension change as done:
 4. Treat every change to `agent/settings.json` or `agent/models.json` as
    machine-wide until proven otherwise — validate JSON and smoke-test
    before considering the change done, not after noticing something broke.
+5. Any change to child launch args (`agent/extensions/subagent/launch.ts`
+   or how `index.ts` calls it) requires a new case in
+   `scripts/test-subagent-launch.ts` (deterministic) AND, if it touches
+   guardrail presence, recursion, or session persistence, a new smoke case
+   in `scripts/smoke-test-extensions.sh` — in the same change, not a
+   follow-up. This mirrors Rule 3's bash-redirection-bypass lesson for the
+   guardrail extensions themselves.
