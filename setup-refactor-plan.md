@@ -1745,3 +1745,130 @@ session's work, carried over from Phase 1).
 
 **Next:** Write `E02`/`F01`/`F02`/`R02`, run V0/V0r on them, then write the
 real `decisions.md` go/no-go entry once both R tasks exist.
+
+## Implementation log — 2026-09-27: subagent eval mechanical corrections (Sven-directed, Pi executed)
+
+**Found:** Sven reviewed the 2026-09-26 eval work and identified 8 mechanical
+issues. Explicit instruction: pi does the mechanics only — no new tasks, no
+defect seeding, no answer keys, no finding labels; those stay Sven's.
+
+**Done, each verified by running a real command:**
+
+1. `scripts/eval-worktree.sh` V1/V2 were wrong: `--tools explorer` treats
+   `--tools` as an agent selector when it's actually a tool allowlist (would
+   restrict pi's *own* tools to a nonexistent "explorer" tool, not invoke the
+   explorer agent). Fixed: V1/V2 now print plain `pi --name "eval <ID>
+   <VARIANT>"` plus a `hint:` line naming the allowed agent(s) per §4 (V1:
+   explorer only; V2: explorer + reviewer), to be invoked explicitly via the
+   subagent tool from inside the session. V3–V5 left as-is (template hints
+   already correct).
+   **Verified:** ran `./scripts/eval-worktree.sh click E01 <V>` for all 7
+   variants (V0/V0r/V1/V2/V3/V4/V5), each created and immediately removed its
+   worktree cleanly; V1/V2 output now shows the corrected `hint:` line and
+   plain `pi --name ...` command (pasted in the session transcript).
+2. `E01` and `R01` retired from the benchmark set to `status: smoke` —
+   both fail `docs/subagent-eval.md` §11 "too easy" (E01: 4/4 AC, 0
+   interventions, 1.8 min; R01: 3/3 AC, 0 interventions, 0.4 min — both
+   well under the 10-minute floor). R01 additionally leaked its own answer
+   key (its "Done means" named `Command._callParseArg`/`lib/command.js`
+   directly, and the seeded commit sits in `commander`'s public git
+   history) — per instruction, history is **not** rewritten; the task is
+   retired instead. Added `status: smoke` + a "Retired from benchmark" note
+   (citing §11, and answer-key exposure for R01) to both cards.
+   `runs.md`/`findings.md` rows kept, `notes` updated to "smoke — excluded
+   from gates". `decisions.md` got a new 2026-09-27 entry stating R01 no
+   longer counts toward §7.1 (the 2026-09-26 "preliminary" entry is left
+   unedited per this repo's append-only decision-log convention).
+   `subagent_concept.md`'s Phase 0 leftover checklist: task-card count reset
+   to 0 of 6 **benchmark** tasks (2 of 6 retired to smoke); V0/V0r run
+   counts reset to 0 of their respective gate requirements.
+   **Verified:** `grep -n "status: smoke" docs/eval/tasks/*.md` shows both
+   cards; `git diff docs/eval/decisions.md` shows the new entry appended,
+   not the old one edited.
+3. Added `scripts/lint-eval-cards.py`: `class: review` cards must reference
+   a `pi-eval/answers/` path, and must not contain backticked
+   file:line/path/function-call/`Class.method`-shaped identifiers in their
+   "Done means" section (answer-key leakage heuristic per §3.4/§3.5).
+   `status: smoke` cards still get checked and reported but never fail the
+   exit code (a WARN, not a FAIL) — a smoke card is already excluded from
+   every gate, so re-failing the build on a known, already-flagged issue
+   would just be noise; a non-smoke card with the same issue does fail.
+   **Verified:** `python3 scripts/lint-eval-cards.py` → `WARN R01.md` (lists
+   the exact leaked spans `Command._callParseArg`, `lib/command.js`),
+   `ok E01.md`, exit code 0. Direct unit test against two ad hoc fixtures
+   (not committed, `/tmp` only) confirmed the heuristic itself: a copy of
+   R01's card content without `status: smoke` → `FAIL` (would break the
+   gate); a clean stub card whose "Done means" only says "see
+   ~/pi-eval/answers/<ID>.md" → `PASS`.
+4. Judge separation: `runs.md`/`findings.md` gained `judged_by` (`pi` |
+   `sven`) and `countersigned` (`yes`/`no`) columns; `docs/subagent-eval.md`
+   §10 now states a run only counts toward a gate once countersigned by
+   Sven. Backfilled E01/R01 as `judged_by: pi`, `countersigned: no` (they
+   were smoke-retired before ever needing a Sven countersignature, but the
+   columns are backfilled honestly rather than left blank).
+5. Added a `mode` column (`interactive` | `print`) to `runs.md`; §5 (new
+   §5.0) states E/R tasks may run `print`, with `interventions` recorded as
+   `n/a` (not `0`) in that mode since there's no human in the loop to
+   intervene; F/B tasks must run `interactive`. Backfilled E01/R01 as
+   `print`, `interventions: n/a` (previously incorrectly `0`). R01's
+   variant label changed `V0r` → `V0r-proxy` everywhere (`runs.md`,
+   `findings.md`) since it was a fresh `pi -p` review, not the actual
+   `/review-fresh` fork flow — friction from the fork step was never
+   measured, and the old label overstated that.
+6. `eval-metrics.py`: added a zero-cost-with-tokens WARN (prints
+   provider/model + turn count to stderr when `cost_total == 0` but tokens
+   > 0 — e.g. a subscription-billed model) and an optional `--price-table
+   <json>` flag (provider/model → per-MTok input/output/cacheRead/
+   cacheWrite; no default table, numbers are Sven's to set) that adds a
+   `cost_notional` field when supplied.
+   **Verified:** built a synthetic 2-turn session (`/tmp`, not committed) —
+   one turn priced normally (openrouter/claude-sonnet-5, cost_total
+   0.005475), one turn with tokens but `cost_total: 0`
+   (openai-codex/gpt-5.6-sol). Without `--price-table`: WARN fired for the
+   codex turn, `cost_main` correctly counted only the priced turn
+   (`0.005475`). With `--price-table` (test prices, not real): `WARN` still
+   fired (independent of pricing), `cost_notional: 0.008325` — hand-checked
+   against the test price table (turn 1: 0.005475, turn 2: 0.00285, sum
+   0.008325) and matches exactly.
+7. Stale references fixed: `subagent_concept.md`'s §0 exec-summary
+   "Decision in one line" bullet and ADR-1's "Decision:" line both said
+   v0.85.1 as if it were still current; both now say v0.87.1 (the installed
+   version) with a one-line note that `nicobailon/pi-subagents`' `pi-ai >=
+   0.86.1` requirement no longer blocks that option now, but the decision
+   to vendor the reference stands on guardrail-inheritance/auditability
+   grounds regardless (unchanged from the original rationale). Historical
+   tag-pin records elsewhere in the doc (the actual `agent/extensions/
+   subagent/` vendoring at v0.85.1, Q4, the file-tree comment) are left
+   unedited — those are records of what was actually done at the time, not
+   stale claims about the current state, and rewriting them would
+   misrepresent history.
+   `runs.md`'s stray "(see docs/eval/README.md re: judge conflict)" phrase
+   was removed as part of item 5's row rewrite (superseded by the real §10
+   judge-separation rule from item 4, not a placeholder reference anymore).
+   `scripts/smoke-test-extensions.sh`'s S5/S6 echo pointed at
+   `docs/subagent-eval.md §6`, a section number that shifted in the
+   2026-09-26 rewrite; repointed at this file's dated
+   "2026-09-23: subagent layer, Phase 1 (runtime foundation)" entry instead
+   of a section number, so it can't go stale the same way again.
+
+**Verified by, run in this order, all green:**
+- `./scripts/smoke-test-extensions.sh` → `14 passed, 0 failed` (S5/S6 note
+  text now points at the corrected reference; confirmed by reading the
+  script's own printed output).
+- `node --experimental-strip-types scripts/test-subagent-launch.ts` →
+  `22 passed, 0 failed` (unrelated to this change set; re-run per Rule 5 /
+  item 8's instruction since launch-test coverage is a standing gate, not
+  because launch.ts was touched).
+- `python3 scripts/lint-agents.py` → `1/1 agent files passed lint`, exit 0.
+- `python3 scripts/lint-eval-cards.py` → `2/2 eval task cards passed lint`,
+  exit 0, with R01's `WARN` printed (reported, not silenced) and correctly
+  excluded from the exit code because of `status: smoke`.
+- `git status --short` → only the intended files modified/added
+  (`scripts/lint-eval-cards.py` new; no `auth.json`/`models-store.json`/
+  `sessions/`/`.bak` staged, confirmed via `git add -A -n | grep -iE
+  "auth\.json|models-store\.json|sessions/|\.bak"` returning nothing).
+
+**Not done / out of scope for this pass (explicit, not silently skipped):**
+writing the actual 6 benchmark task cards, seeding their defects, and
+writing their answer keys — all reserved for Sven per this task's own
+instruction.

@@ -171,6 +171,16 @@ Which tasks each variant runs on:
 
 ## 5. Run protocol
 
+### 5.0 Mode: interactive vs print
+
+E and R tasks may run in `print` mode (a fresh, non-interactive `pi -p
+"<task text>"` process) — there's no human in the loop to intervene, so
+`interventions` is recorded as `n/a`, not `0`; `0` would misleadingly claim
+a clean interactive pass that never happened. F and B tasks change files and
+must run `interactive`, since the no-rescue rule and intervention count only
+mean something when a human is actually driving. Record the mode used in
+`runs.md`'s `mode` column.
+
 ### 5.1 Before a run
 
 - Confirm the pi version (`pi --version`) and the model set match the evaluation cycle (see §9).
@@ -323,13 +333,19 @@ docs/eval/
 
 ### 8.2 `runs.md`
 
-| date | cycle | task | variant | run | pi | main model | cost_main | cost_child | peak_ctx | turns | compactions | minutes | ac_met | interventions | assisted | scope_ok | escaped | plan_score | notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| date | cycle | task | variant | run | pi | main model | mode | cost_main | cost_child | peak_ctx | turns | compactions | minutes | ac_met | interventions | assisted | scope_ok | escaped | plan_score | judged_by | countersigned | notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+- `mode`: `interactive` or `print`. E and R tasks may run in `print` mode
+  (non-interactive `pi -p`); `interventions` is `n/a` in that mode, not `0`
+  — a print-mode run cannot be intervened on, so `0` would misleadingly
+  imply a clean interactive pass. F and B tasks must run `interactive`.
+- `judged_by` / `countersigned`: see §10.
 
 ### 8.3 `findings.md`
 
-| date | task | variant | agent | finding (short) | location | severity given | label | seeded? |
-|---|---|---|---|---|---|---|---|---|
+| date | task | variant | agent | finding (short) | location | severity given | label | seeded? | judged_by | countersigned | notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|
 
 ### 8.4 `decisions.md` entry format
 
@@ -374,6 +390,12 @@ This keeps the evaluation **bounded**: each cycle has a fixed task set and a fix
 | Extract metrics, fill numeric columns | — | ✓ (`eval-metrics.py`) |
 | Gate decisions | ✓ | Writes the entry in `decisions.md` |
 | Scaffolding (scripts, templates, smoke tests) | Review | ✓ |
+
+Pi may pre-fill judgments (acceptance criteria, finding labels, severities)
+as a draft, but a run only counts toward a gate once it is **countersigned**
+by Sven. `runs.md`/`findings.md` record `judged_by` (`pi` or `sven`) and
+`countersigned` (`yes`/`no`) for every row; a gate decision in
+`decisions.md` must not cite a row where `countersigned` is `no`.
 
 ---
 

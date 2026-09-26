@@ -14,6 +14,13 @@ Usage:
     python3 ~/.pi/scripts/eval-metrics.py --since <ISO-or-epoch> --cwd-contains eval-<ID>-<VARIANT>
     python3 ~/.pi/scripts/eval-metrics.py --session-file <path-to.jsonl>
     python3 ~/.pi/scripts/eval-metrics.py --since ... --cwd-contains ... --json
+    python3 ~/.pi/scripts/eval-metrics.py --session-file <path> --price-table prices.json
+
+--price-table is optional and off by default (no built-in numbers — Sven
+decides those). Format:
+    {"openrouter/anthropic/claude-sonnet-5": {"input": 3.0, "output": 15.0,
+     "cacheRead": 0.3, "cacheWrite": 3.75}}
+values are USD per 1,000,000 tokens. Key is "<provider>/<model>".
 
 Reads session logs, which may contain file contents and command output --
 this script only extracts token/cost/timing metadata, never prints message
@@ -78,6 +85,7 @@ def session_metrics(path, since_dt, until_dt):
     peak_ctx = 0
     first_ts = None
     last_ts = None
+    turn_usages = []  # per-assistant-turn raw usage, for zero-cost warnings + --price-table
 
     for d in iter_jsonl(path):
         ts = parse_ts(d.get("timestamp"))
@@ -118,6 +126,18 @@ def session_metrics(path, since_dt, until_dt):
         )
         peak_ctx = max(peak_ctx, prompt_size)
 
+        turn_usages.append(
+            {
+                "provider": msg.get("provider"),
+                "model": msg.get("model"),
+                "input": usage.get("input", 0) or 0,
+                "output": usage.get("output", 0) or 0,
+                "cacheRead": usage.get("cacheRead", 0) or 0,
+                "cacheWrite": usage.get("cacheWrite", 0) or 0,
+                "cost_total": cost.get("total", 0) or 0,
+            }
+        )
+
     minutes = None
     if first_ts and last_ts:
         minutes = round((last_ts - first_ts).total_seconds() / 60, 1)
@@ -131,7 +151,43 @@ def session_metrics(path, since_dt, until_dt):
         "first_ts": first_ts.isoformat() if first_ts else None,
         "last_ts": last_ts.isoformat() if last_ts else None,
         "minutes": minutes,
+        "turn_usages": turn_usages,
     }
+
+
+def zero_cost_warnings(turn_usages):
+    """Flag provider/model pairs that reported tokens but $0 cost — typically
+    a subscription-billed model (e.g. some codex tiers) where cost_total is
+    not a meaningful signal for gates that compare cost across variants."""
+    seen = {}
+    for u in turn_usages:
+        tokens = u["input"] + u["output"] + u["cacheRead"] + u["cacheWrite"]
+        if tokens > 0 and u["cost_total"] == 0:
+            key = (u["provider"], u["model"])
+            seen[key] = seen.get(key, 0) + 1
+    return seen
+
+
+def notional_cost(turn_usages, price_table):
+    """Sum a --price-table-based notional cost for turns whose provider/model
+    key is present in the table. Silent no-op (contributes 0) for any
+    provider/model not in the table — there is no default table; the caller
+    decides the numbers."""
+    total = 0.0
+    priced_turns = 0
+    for u in turn_usages:
+        key = f"{u['provider']}/{u['model']}" if u["provider"] and u["model"] else None
+        prices = price_table.get(key) if key else None
+        if not prices:
+            continue
+        priced_turns += 1
+        total += (
+            u["input"] * prices.get("input", 0)
+            + u["output"] * prices.get("output", 0)
+            + u["cacheRead"] * prices.get("cacheRead", 0)
+            + u["cacheWrite"] * prices.get("cacheWrite", 0)
+        ) / 1_000_000
+    return round(total, 6), priced_turns
 
 
 def child_cost(subagents_dir, since_dt, until_dt):
@@ -157,8 +213,17 @@ def main():
     ap.add_argument("--until", help="Only count events at/before this ISO timestamp (default: now)")
     ap.add_argument("--cwd-contains", help="Match session dirs/cwd containing this substring, e.g. eval-F02-V0")
     ap.add_argument("--session-file", help="Analyze one specific .jsonl file directly instead of searching")
+    ap.add_argument("--price-table", help="Path to a JSON file mapping '<provider>/<model>' to per-MTok {input,output,cacheRead,cacheWrite} prices (see module docstring). No default table.")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
+
+    price_table = {}
+    if args.price_table:
+        try:
+            price_table = json.loads(Path(args.price_table).read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"error: could not read --price-table {args.price_table}: {exc}", file=sys.stderr)
+            sys.exit(1)
 
     since_dt = parse_ts(args.since) if args.since else None
     until_dt = parse_ts(args.until) if args.until else datetime.now(timezone.utc)
@@ -196,6 +261,15 @@ def main():
     if subagents_dir.is_dir():
         cost_child, n_children = child_cost(subagents_dir, since_dt, until_dt)
 
+    all_turn_usages = [u for m in main_metrics for u in m["turn_usages"]]
+    zero_cost = zero_cost_warnings(all_turn_usages)
+    for (provider, model), n in zero_cost.items():
+        print(
+            f"WARN: provider={provider} model={model} reported tokens > 0 but cost_total == 0 "
+            f"on {n} turn(s) — subscription-billed? cost gates not meaningful for this provider/model.",
+            file=sys.stderr,
+        )
+
     result = {
         "session_files": [m["path"] for m in main_metrics],
         "cost_main": cost_main,
@@ -206,7 +280,13 @@ def main():
         "turns": turns,
         "compactions": compactions,
         "minutes": minutes,
+        "zero_cost_providers": [f"{p}/{m}" for (p, m) in zero_cost],
     }
+
+    if price_table:
+        cost_notional, priced_turns = notional_cost(all_turn_usages, price_table)
+        result["cost_notional"] = cost_notional
+        result["priced_turns"] = f"{priced_turns}/{len(all_turn_usages)}"
 
     if args.json:
         print(json.dumps(result, indent=2))
@@ -221,6 +301,8 @@ def main():
         print(f"turns:       {result['turns']}")
         print(f"compactions: {result['compactions']}")
         print(f"minutes:     {result['minutes']}")
+        if "cost_notional" in result:
+            print(f"cost_notional: {result['cost_notional']} (priced {result['priced_turns']} turns via --price-table)")
 
 
 if __name__ == "__main__":

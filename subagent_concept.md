@@ -23,7 +23,9 @@ What's missing is a way to push *read-heavy* or *independent-judgement* work out
 
 **Decision in one line:**
 
-- Vendor pi's own reference `subagent` extension, pinned to v0.85.1.
+- Vendor pi's own reference `subagent` extension, pinned to v0.87.1 (the
+  installed version; originally v0.85.1 when this line was first written —
+  see the Phase 0 version-decision note below).
 - Launch every child with `-ne` plus explicitly re-loaded guardrails.
 - Persist named child sessions so each child is observable.
 - Add six repo-owned, read-only-first agents in phases.
@@ -216,7 +218,13 @@ Child-only tools must **not** live in `agent/extensions/`. Pi auto-discovers `ex
   - `nicobailon/pi-subagents`;
   - `@minhduydev/pi-subagents`;
   - tmux skill.
-- **Decision:** vendor the reference at the tag matching installed pi (v0.85.1).
+- **Decision:** vendor the reference at the tag matching installed pi
+  (v0.87.1, the currently installed version; v0.85.1 at the time this ADR
+  was first written). Note: `nicobailon/pi-subagents`' `pi-ai >= 0.86.1`
+  requirement no longer blocks that option now that pi is at v0.87.1, but
+  the decision stands regardless — it was never solely about the version
+  gate, but about guardrail-inheritance and auditability (below), which the
+  vendored-reference option still wins on.
 - **Rationale:**
   - Matches repo convention and dependency policy (no new deps).
   - Spawns real processes, so the guardrail contract is controllable.
@@ -376,14 +384,20 @@ original 10-task list and its planned baseline runs are superseded, not owed.
       by design — documented in `docs/eval/README.md`). `execa` was tried
       first for the TS slot and rejected (5m18s test suite, over the
       `<2min` bar) — swapped for `commander.js`.
-- [ ] Write ≥ 6 task cards (2 E, 2 F, 2 R minimum) — **2 of 6 done**: `E01`
-      (click, exploration, no code change) and `R01` (commander, review,
-      seeded silently-swallowed-exception defect on branch `eval/R01-diff`,
-      answer key in `~/pi-eval/answers/R01.md`). Still missing: `E02`
-      (doc-manager), `F01` (crosses ≥ 1 module boundary), `F02`
-      (doc-manager, crosses a module boundary), `R02` (second seeded
-      defect, needed before the go/no-go gate below can close per §7.1's
-      "both R tasks" requirement).
+- [ ] Write ≥ 6 **benchmark** task cards (2 E, 2 F, 2 R minimum) — **0 of 6
+      done, 2 of 6 retired to smoke (2026-09-27)**: `E01` (click,
+      exploration) and `R01` (commander, review, seeded
+      silently-swallowed-exception defect) both scored perfectly with 0
+      interventions in well under 10 minutes — disqualified by §11
+      "too easy." `R01` additionally leaked its own answer key (the task
+      card's "Done means" named the defect mechanism; the seeded commit
+      sits in public `commander` git history — not rewritten, per
+      instruction, the task is retired instead). Both are now
+      `status: smoke` in their cards, kept only to exercise tooling, and
+      excluded from every gate (`docs/eval/decisions.md`, 2026-09-27 entry).
+      All 6 benchmark task cards (2 E, 2 F, 2 R) still need to be written
+      from scratch, harder this time (≥ 20 min, real friction expected, no
+      answer-key leakage — see `scripts/lint-eval-cards.py`).
 - [x] Build `scripts/eval-worktree.sh` and `scripts/eval-metrics.py`, and
       validate the latter's cost numbers (§12). Done: both scripts built;
       `eval-metrics.py`'s `cost_main` cross-validated against
@@ -402,27 +416,22 @@ original 10-task list and its planned baseline runs are superseded, not owed.
       compaction threshold).
 - [x] Freeze evaluation cycle C1 (pi version, `enabledModels`, main model,
       benchmark commits) and record it (§9) — `docs/eval/README.md`.
-- [ ] Run V0 (baseline) on all tasks; fill `docs/eval/runs.md` (§8.2) —
-      **1 of ≥ 6 done** (E01: `cost_total` 0.313835, `peak_ctx` 49940,
-      `turns` 21, `compactions` 0, `minutes` 1.8, `ac_met` 4/4, 0
-      interventions, scope_ok yes — all 3 file:line citations in pi's
-      answer spot-checked against the real source and correct). Run
-      mechanism: a genuinely fresh, separate `pi -p ... --exclude-tools
-      subagent` subprocess against the frozen worktree, not this session
-      (this session cannot be a valid V0 — it already knows the eval
-      methodology and defect-seeding guidance).
-- [ ] Run V0r (`/review-fresh`-equivalent) on the R tasks; fill
-      `docs/eval/findings.md` (§8.3) — **1 of 2 required done** (R01:
-      `cost_total` 0.034355, `turns` 4, 0 interventions, seeded defect
-      caught, severity CRITICAL, only `bash`/`read` tool calls used —
-      verified the test suite was not run as part of the review). This
-      subsumes the old "`/review-fresh` used ≥ 2×" leftover; R02 still
-      needed for the §7.1 "both R tasks" requirement.
+- [ ] Run V0 (baseline) on all benchmark tasks; fill `docs/eval/runs.md`
+      (§8.2) — **0 of ≥ 6 done** (E01's run was real and is kept in
+      `runs.md` for tooling provenance, but is marked "smoke — excluded
+      from gates" and does not count).
+- [ ] Run V0r on both R tasks; fill `docs/eval/findings.md` (§8.3) —
+      **0 of 2 required done** (R01's run was real, caught the defect,
+      but is marked smoke/excluded for the reasons above; it also used a
+      `pi -p` fresh-review proxy, not the actual `/review-fresh` flow —
+      relabelled `V0r-proxy` in `runs.md`/`findings.md` to not overstate
+      what was measured, since friction from the fork step itself wasn't
+      exercised).
 - [ ] Write the reviewer go/no-go decision in `docs/eval/decisions.md` per
-      §7.1 — **explicitly deferred, not written**: `docs/eval/decisions.md`
-      has a 2026-09-26 entry recording R01's result as one data point and
-      stating in its own text that this must not be mistaken for the real
-      decision until R02 exists and is run.
+      §7.1 — **still not written**: the 2026-09-26 "preliminary" entry is
+      superseded (not deleted, per this repo's decision-log convention) by
+      a 2026-09-27 entry stating R01 no longer counts toward this gate at
+      all. Current count toward §7.1: 0 of 2 required non-smoke R tasks.
 - [ ] Script smoke S5/S6 with a priced model (carried over unchanged from
       the Phase 1 leftover list below).
 - [ ] Q7 (`AgentToolResult` carrying `usage` directly) stays open — resolve it

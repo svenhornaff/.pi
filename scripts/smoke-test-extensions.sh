@@ -212,8 +212,11 @@ else
 fi
 
 echo "(S5/S6 -- /session-stats and session-usage-report.py subagent accounting --"
-echo " verified manually this session with real command transcripts, see"
-echo " docs/subagent-eval.md §6 Phase 1 verification; not yet scripted here.)"
+echo " verified manually with real command transcripts, see setup-refactor-plan.md's"
+echo " 2026-09-23: subagent layer, Phase 1 (runtime foundation) entry; not yet"
+echo " scripted here. docs/subagent-eval.md's section numbering has since changed"
+echo " (the 2026-09-26 rewrite) -- point at the dated decision-log entry, not a"
+echo " section number, so this doesn't go stale again.)"
 echo
 
 PASS=$(grep -c '^PASS$' "$RESULTS_FILE" || true)
