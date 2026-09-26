@@ -1,6 +1,6 @@
 # Subagent Layer for `svenhornaff/.pi` @ `p-mac` — Concept v1.0
 
-*Status: proposal, Phase 0 partially complete · Date: 2026-09-23 · Scope: `~/.pi` on p-mac (pi v0.87.1 installed — doc originally assumed v0.85.1; superseded by the Phase 0 version decision, see Phase 0 status note) · Owner: Sven*
+*Status: proposal, Phase 0 partially complete, evaluation scope reopened 2026-09-26 · Date: 2026-09-23 (updated 2026-09-26) · Scope: `~/.pi` on p-mac (pi v0.87.1 installed — doc originally assumed v0.85.1; superseded by the Phase 0 version decision, see Phase 0 status note) · Owner: Sven*
 
 ---
 
@@ -334,43 +334,116 @@ Each phase ships as its own commit series with a `setup-refactor-plan.md` entry 
 
 - Run `review-fresh` on the 2 review-only tasks and record findings plus precision.
 
-**Done When**
+**Done When (superseded 2026-09-26 — see status note)**
 
-- [x] 10 benchmark tasks defined with acceptance criteria, stored in `docs/subagent-eval.md`
-- [ ] Baseline metrics recorded for all 10 tasks (single-agent) — **leftover, see below**
 - [x] Q1–Q6 answered with command output pasted into the decision log (Q4 superseded by the v0.87.1 vendoring decision, recorded as such; Q7/Q8 correctly carried forward per their own nature — Q7 is a Phase 1 implementation question, Q8 depends on the still-open `/review-fresh` leftover)
-- [ ] `/review-fresh` exists and has been used ≥ 2×, with a precision number recorded — **template exists (`agent/prompts/review-fresh.md`); 0 of the required ≥ 2 uses done — leftover, see below**
-- [ ] Go/no-go note written. If `/review-fresh` already delivers ≥ 80% of the expected reviewer value, **Phase 2's reviewer is dropped** and only explorer proceeds — **blocked on the two leftovers above, not written**
+- [ ] ~~10 benchmark tasks defined with acceptance criteria, stored in `docs/subagent-eval.md`~~ — **superseded, see below**: the original concrete 10-task list against the trusted repos (`bulliexplorer`, `doc-manager`, `idp-docs`) has been replaced by a generic, project-independent evaluation concept (frozen benchmark repos under `~/pi-eval/`, ≥ 6-task minimum, cycle-based). See `docs/subagent-eval.md` §13 for the current Done-When list, which now governs this phase instead of the row above.
+- [ ] `docs/subagent-eval.md` §13 items (benchmark repos pinned under `~/pi-eval/`, ≥ 6 task cards + answer keys, `eval-worktree.sh` + `eval-metrics.py` + `docs/eval/` templates built, cycle C1 frozen, V0 run on all tasks, V0r run on the R tasks, reviewer go/no-go written, S5/S6 scripted) — **none done yet; this is new scope, not carried over from the original 10-task plan**
+- [ ] Go/no-go note (per `docs/subagent-eval.md` §7.1) — blocked on the above
 
 **Rollback:** none needed (docs and a prompt template only).
 
-**Effort:** S (½–1 day, mostly running tasks)
+**Effort:** M (was S; the reopened scope adds a benchmark-repo workspace and two scripts not previously planned — re-estimate once `docs/subagent-eval.md` §12 tooling exists)
 
-**Status (2026-09-23): partially done.** Docs/template scaffolding and all six
-technical probes were completed and verified with real command output — see
-`docs/subagent-eval.md` (full detail) and the `setup-refactor-plan.md`
-"2026-09-23: subagent layer, Phase 0" entry (summary + verification commands).
-The two data-collection items below were **deliberately not run** unattended
-in that session (each is real, multi-hour work against the trusted repos) and
-remain open before the phase gate is genuinely met.
+**Status (2026-09-23, updated 2026-09-26): still partially done, scope reopened, not closed.**
+Docs/template scaffolding and all six technical probes were completed and
+verified with real command output in the 2026-09-23 session — that evidence
+stands and is preserved in the `setup-refactor-plan.md` "2026-09-23: subagent
+layer, Phase 0" entry (summary + verification commands), unaffected by the
+change below.
 
-**Leftover (Phase 0, not yet done):**
+On 2026-09-26, `docs/subagent-eval.md` was rewritten from the concrete
+10-task/trusted-repo log into a generic, reusable evaluation methodology
+(frozen benchmark repos, variants V0–V5, decision rules, evaluation cycles).
+This is a deliberate, user-directed scope change, not a completion: the new
+document's own §13 Done-When list is **entirely unchecked** — no `~/pi-eval/`
+workspace exists, no task cards, no `eval-worktree.sh`/`eval-metrics.py`, no
+runs recorded. Phase 0 is therefore **not closed**; it now has a different,
+larger set of leftovers than the 2026-09-23 status note described. The
+original 10-task list and its planned baseline runs are superseded, not owed.
 
-- [ ] Run all 10 benchmark tasks single-agent (current setup, no subagent
-      runtime); record peak context tokens, total cost, wall time, and
-      later-review defect count for each in `docs/subagent-eval.md` §2.
-- [ ] Run `/review-fresh` on the 2 review-only tasks (ideally +1–2 more) and
-      label findings true/false to get a precision number, in
-      `docs/subagent-eval.md` §3.
-- [ ] Write the go/no-go note once the above exists; if `/review-fresh`
-      already delivers ≥ 80% of expected reviewer value, drop Phase 2's
-      reviewer and update that phase's entry criteria here accordingly.
+**Leftover (Phase 0, current as of 2026-09-26, updated same day after real execution):**
+
+- [x] Stand up `~/pi-eval/{repos,answers,runs}` with ≥ 3 pinned benchmark
+      repos, each with a green test suite at `eval/base` (§3.1). Done:
+      `click` (pallets/click, Python, ~9k LOC, pytest ~4.5s), `commander`
+      (tj/commander.js, TS/JS, ~19.6k LOC, `node --test` ~4s), `doc-manager`
+      (frozen snapshot of the trusted local repo, Python/FastAPI, ~26k LOC,
+      pytest ~4.6s, secrets excluded — `.env`/`.db`/reports were never
+      tracked in git so the clone is clean by construction; dummy
+      `LLMHUB_API_KEY`/`TAVILY_API_KEY` must be exported as process env, not
+      an `.env` file, since `protected-paths.ts` blocks writing any `.env*`
+      by design — documented in `docs/eval/README.md`). `execa` was tried
+      first for the TS slot and rejected (5m18s test suite, over the
+      `<2min` bar) — swapped for `commander.js`.
+- [ ] Write ≥ 6 task cards (2 E, 2 F, 2 R minimum) — **2 of 6 done**: `E01`
+      (click, exploration, no code change) and `R01` (commander, review,
+      seeded silently-swallowed-exception defect on branch `eval/R01-diff`,
+      answer key in `~/pi-eval/answers/R01.md`). Still missing: `E02`
+      (doc-manager), `F01` (crosses ≥ 1 module boundary), `F02`
+      (doc-manager, crosses a module boundary), `R02` (second seeded
+      defect, needed before the go/no-go gate below can close per §7.1's
+      "both R tasks" requirement).
+- [x] Build `scripts/eval-worktree.sh` and `scripts/eval-metrics.py`, and
+      validate the latter's cost numbers (§12). Done: both scripts built;
+      `eval-metrics.py`'s `cost_main` cross-validated against
+      `session-usage-report.py`'s independent computation for the same
+      session file (`1.468082` vs `1.4680824...`, matches) — a real,
+      already-trusted second implementation of the same `usage.cost.total`
+      sum, used in place of an interactive `/session-stats` reading since
+      this is a non-interactive context. **Correction made during this same
+      session:** the script's first draft mis-attributed the pi-lens
+      tool-output-pruning custom messages (`customType` starting
+      `context-prune-`) as compaction events; fixed to key off the real
+      `type: "compaction"` entries per `session-manager.js`'s
+      `appendCompaction` — verified by reading pi's own installed source,
+      re-run against both the smoke session and the real E01 run (2 → 0,
+      matching that neither session's `peak_ctx` was anywhere near a
+      compaction threshold).
+- [x] Freeze evaluation cycle C1 (pi version, `enabledModels`, main model,
+      benchmark commits) and record it (§9) — `docs/eval/README.md`.
+- [ ] Run V0 (baseline) on all tasks; fill `docs/eval/runs.md` (§8.2) —
+      **1 of ≥ 6 done** (E01: `cost_total` 0.313835, `peak_ctx` 49940,
+      `turns` 21, `compactions` 0, `minutes` 1.8, `ac_met` 4/4, 0
+      interventions, scope_ok yes — all 3 file:line citations in pi's
+      answer spot-checked against the real source and correct). Run
+      mechanism: a genuinely fresh, separate `pi -p ... --exclude-tools
+      subagent` subprocess against the frozen worktree, not this session
+      (this session cannot be a valid V0 — it already knows the eval
+      methodology and defect-seeding guidance).
+- [ ] Run V0r (`/review-fresh`-equivalent) on the R tasks; fill
+      `docs/eval/findings.md` (§8.3) — **1 of 2 required done** (R01:
+      `cost_total` 0.034355, `turns` 4, 0 interventions, seeded defect
+      caught, severity CRITICAL, only `bash`/`read` tool calls used —
+      verified the test suite was not run as part of the review). This
+      subsumes the old "`/review-fresh` used ≥ 2×" leftover; R02 still
+      needed for the §7.1 "both R tasks" requirement.
+- [ ] Write the reviewer go/no-go decision in `docs/eval/decisions.md` per
+      §7.1 — **explicitly deferred, not written**: `docs/eval/decisions.md`
+      has a 2026-09-26 entry recording R01's result as one data point and
+      stating in its own text that this must not be mistaken for the real
+      decision until R02 exists and is run.
+- [ ] Script smoke S5/S6 with a priced model (carried over unchanged from
+      the Phase 1 leftover list below).
 - [ ] Q7 (`AgentToolResult` carrying `usage` directly) stays open — resolve it
       during Phase 1 implementation, not before.
 
-Phase 1 must not start on the claim that Phase 0 is done while these remain
-unchecked; either complete them for real, or get an explicit, logged decision
-to proceed with the gate knowingly unmet.
+**Correction to Phase 0's own process, logged here rather than silently
+fixed:** while building the `commander` seeded-defect branch, the tag/branch
+name `eval/R01-diff` was briefly deleted by mistake (`git tag -d` was issued
+correctly to resolve a tag/branch ambiguity, but a later cleanup step ran
+`git branch -D eval/R01-diff` after the R01 run, which is wrong — task
+branches must survive for re-runs per §5.4/§9). It was restored immediately
+from the recorded commit hash (`2dff0a8`) before any further work; flagging
+it here so a future session doesn't need to rediscover this the hard way,
+and as a reminder that `eval-worktree.sh`'s users must never delete an
+`eval/<ID>-diff` branch, only remove the worktree.
+
+Phase 1 already started (see its own status note) under an explicit,
+user-directed decision to proceed with Phase 0's data-collection gate
+knowingly unmet; that decision stands. Phase 2 (which depends on the
+reviewer go/no-go) must not start on the claim that Phase 0 is done while
+the items above remain unchecked.
 
 ---
 
