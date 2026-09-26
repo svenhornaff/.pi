@@ -1872,3 +1872,56 @@ defect seeding, no answer keys, no finding labels; those stay Sven's.
 writing the actual 6 benchmark task cards, seeding their defects, and
 writing their answer keys — all reserved for Sven per this task's own
 instruction.
+
+## Implementation log — 2026-09-26 (fix-up on 865cbd7, Sven-directed)
+
+**Found:** Sven caught 4 issues in `865cbd7`: (1) R01's retirement note and
+`decisions.md`'s new entry were dated `2026-09-27` when the work actually
+happened `2026-09-26` (authoring slip, not a next-day edit — `date -u`
+confirmed still `2026-09-26` at fix-up time); (2) the R01 answer-key
+exposure reason was factually wrong — I'd written that the seeded commit
+sits in public `commander` git history, but `eval/R01-diff` is local-only
+in `~/pi-eval/repos/commander` and was never pushed; the actual exposure is
+that this task card (naming the defect mechanism verbatim) is committed to
+the *public* `svenhornaff/.pi` repo itself; (3) two more stale `v0.85.1`
+mentions at `subagent_concept.md` lines 187/465 (file-tree comment,
+Phase 1 deliverable bullet); (4) `scripts/lint-eval-cards.py` wasn't in
+`AGENTS.md`'s PR checklist.
+
+**Done:**
+
+1. `docs/eval/tasks/R01.md`: date `2026-09-27` → `2026-09-26`.
+   `docs/eval/decisions.md`: heading date corrected in place
+   (`2026-09-27` → `2026-09-26`) *plus* an appended one-line correction
+   note stating what was wrong and that it was corrected — not a silent
+   rewrite, per instruction.
+2. `docs/eval/tasks/R01.md` and `docs/eval/decisions.md`: exposure-reason
+   text corrected — the branch is local-only, never pushed; the real
+   exposure is the public `svenhornaff/.pi` repo carrying the card's ACs.
+   `decisions.md` records this correction explicitly rather than silently
+   swapping the wording.
+3. `subagent_concept.md` lines 187 (file-tree comment) and 465 (Phase 1
+   deliverable bullet): `v0.85.1` → `v0.87.1`. Left every other `v0.85.1`
+   mention alone (lines 3, 27, 65, 222, 337, 818, 1057) — those are
+   historical/quoted records (what the doc originally assumed, what the
+   ADR said at the time, tag-verification steps), not stale claims about
+   current state, and only 187/465 were named for this fix.
+4. `AGENTS.md`'s PR checklist: added `python3 scripts/lint-agents.py`
+   (wasn't listed before either) and `python3 scripts/lint-eval-cards.py`
+   as item 4, with a note that a `status: smoke` card's WARN doesn't fail
+   the exit code.
+
+**Verified by, all green:**
+- `grep -n "2026-09-27" docs/eval/tasks/R01.md docs/eval/decisions.md` →
+  only the new correction note's own explanatory text ("originally dated
+  2026-09-27 by mistake") matches, no stale heading/date remains.
+- `grep -n "v0.85.1" subagent_concept.md` → lines 187/465 no longer present
+  as `v0.85.1`; only the intentionally-untouched historical mentions remain.
+- `./scripts/smoke-test-extensions.sh` → 14 passed, 0 failed.
+- `python3 scripts/lint-eval-cards.py` → 2/2, exit 0, R01's WARN still
+  correctly reported and excluded via `status: smoke`.
+- `python3 scripts/lint-agents.py` → 1/1, exit 0.
+- `git status --short` → exactly `AGENTS.md`, `docs/eval/decisions.md`,
+  `docs/eval/tasks/R01.md`, `subagent_concept.md` — no secrets/sessions/
+  backups (`git add -A -n | grep -iE "auth\.json|models-store\.json|
+  sessions/|\.bak"` → empty).

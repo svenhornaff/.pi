@@ -184,7 +184,7 @@ agent/
 │   └── researcher.md
 ├── extensions/
 │   ├── subagent/                   # NEW — vendored runtime (auto-loaded by MAIN only)
-│   │   ├── index.ts                # from pi v0.85.1 examples + p-mac changes
+│   │   ├── index.ts                # from pi v0.87.1 examples + p-mac changes
 │   │   ├── agents.ts               # frontmatter: + extensions, timeoutMs
 │   │   ├── launch.ts               # NEW — pure buildChildArgs(), no pi imports (testable)
 │   │   └── UPSTREAM.md             # pinned tag, upstream SHA, list of local deltas
@@ -462,7 +462,7 @@ the items above remain unchecked.
 
 **Deliverables**
 
-- `agent/extensions/subagent/` vendored from `v0.85.1`, with `UPSTREAM.md` recording tag, SHA and deltas.
+- `agent/extensions/subagent/` vendored from `v0.87.1`, with `UPSTREAM.md` recording tag, SHA and deltas.
 - **Local deltas:**
   - **D1** `launch.ts`: a pure `buildChildArgs(agent, task, ctx)` that implements §3.2 exactly. Guardrail `-e` flags are appended unconditionally, never with `--no-session`, and always with `--session-dir` + `--name`.
   - **D2** Frontmatter extensions: `extensions:` (extra `-e` paths, resolved relative to `~/.pi/agent`), `timeoutMs` (kill child after the deadline, report a timeout).
