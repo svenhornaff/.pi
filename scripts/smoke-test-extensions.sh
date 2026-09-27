@@ -29,9 +29,15 @@
 #      `pi -p` only persists a session to disk once a real model turn has
 #      happened in it, so a command-only first call leaves nothing for a
 #      second `--session-id` call to resume -- see setup-refactor-plan.md)
-#  A3. architect's per-branch use cap (default 3) refuses a 4th call in
-#      the same turn without a model call -- scriptable in one `pi -p`
-#      invocation, unlike A2
+#  A3a. architect's per-branch use cap refuses a call without a real model
+#      call -- run with PI_ARCHITECT_MAX_USES=0 so a single call is already
+#      at the cap. Previously this ran 3 real gpt-5.6-terra calls to reach
+#      the cap on every gate run (docs/p-mac-harness.html P1, "the smoke
+#      gate spends real model calls")
+#  A3b. same session's .jsonl confirms the architect tool was actually
+#      called (not just that the model claimed a refusal) and that the call
+#      made no real model call: details.architect.usage is absent (checked
+#      via scripts/architect-call-check.py)
 #
 # Usage:
 #   ~/.pi/scripts/smoke-test-extensions.sh
@@ -48,6 +54,7 @@
 
 set -uo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 MODEL="${SMOKE_TEST_MODEL:-openrouter/anthropic/claude-sonnet-5}"
 while [[ $# -gt 0 ]]; do
 	case "$1" in
@@ -168,9 +175,33 @@ echo "-- 5. architect.ts (A1-A3) --"
 		"^architect disabled$" \
 		pi -p --model "$MODEL" "/architect disable"
 
-	check "A3: 4th architect call in one turn refuses without a model call (max-uses 3 default)" \
-		"[Uu]se limit reached" \
-		pi -p --model "$MODEL" "Call the architect tool exactly 4 times in a row, each with a different trivial question like 'design change N'. Report exactly the content text returned by the 4th call, verbatim, nothing else."
+	A3_MARKER=$(mktemp)
+	A3_OUTPUT=$(PI_ARCHITECT_MAX_USES=0 pi -p --model "$MODEL" "Call the architect tool exactly once, with a trivial question like 'design change 1'. Report exactly the content text returned, verbatim, nothing else." 2>&1)
+	if echo "$A3_OUTPUT" | grep -qE "[Uu]se limit reached"; then
+		echo "  ok  - A3a: architect call refuses at PI_ARCHITECT_MAX_USES=0"
+		echo "PASS" >>"$RESULTS_FILE"
+	else
+		echo "  FAIL - A3a: architect call refuses at PI_ARCHITECT_MAX_USES=0"
+		echo "         expected to match: [Uu]se limit reached"
+		echo "         got: $(echo "$A3_OUTPUT" | tail -3 | tr '\n' ' ')"
+		echo "FAIL:A3a: architect call refuses at PI_ARCHITECT_MAX_USES=0" >>"$RESULTS_FILE"
+	fi
+
+	A3_SESSION_FILE=$(find "$HOME/.pi/agent/sessions" -name '*.jsonl' -newer "$A3_MARKER" -print 2>/dev/null | head -1)
+	rm -f "$A3_MARKER"
+	A3_VERDICT="NO_SESSION_FILE"
+	if [[ -n "$A3_SESSION_FILE" ]]; then
+		A3_VERDICT=$(python3 "$SCRIPT_DIR/architect-call-check.py" "$A3_SESSION_FILE")
+	fi
+	if [[ "$A3_VERDICT" == "CALL_FOUND NO_USAGE" ]]; then
+		echo "  ok  - A3b: architect tool was called but made no real model call (no details.architect.usage)"
+		echo "PASS" >>"$RESULTS_FILE"
+	else
+		echo "  FAIL - A3b: architect tool was called but made no real model call (no details.architect.usage)"
+		echo "         session file: $A3_SESSION_FILE"
+		echo "         got: $A3_VERDICT"
+		echo "FAIL:A3b: architect tool was called but made no real model call (no details.architect.usage)" >>"$RESULTS_FILE"
+	fi
 )
 echo
 

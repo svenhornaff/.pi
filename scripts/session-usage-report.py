@@ -5,8 +5,20 @@ session-usage-report.py
 Reports model usage, cache read/write, and cost across pi session .jsonl
 files (per ~/.pi/setup-refactor-plan.md, Phase 8, item 3).
 
-Reads every assistant message's `usage` block (input/output/cacheRead/
-cacheWrite/reasoning tokens + cost.*) and aggregates by provider/model.
+Reads every source of billed usage in a session, matching the accounting in
+agent/extensions/session-stats.ts (docs/p-mac-harness.html P2, "All-sessions
+spend is undercounted" -- this script used to read assistant messages only):
+  - assistant messages' `usage` block (input/output/cacheRead/cacheWrite/
+    reasoning tokens + cost.*), bucketed by provider/model
+  - toolResult messages with their own `usage` (nested LLM work performed BY
+    a tool, e.g. pi-condense's summarizer calls), bucketed as (tool-internal)
+  - toolResult messages from `advisor`/`architect`, which report usage under
+    `details.<toolName>.usage` instead of `message.usage`, bucketed as
+    `(advisor)`/`(architect)` -- only used when `message.usage` is absent, so
+    a future version of either tool that sets `message.usage` directly is
+    not double-counted
+  - `compaction` entries, bucketed as (compaction)
+  - `branch_summary` entries, bucketed as (branch-summary)
 
 Also flags sessions with zero cacheRead despite non-trivial input tokens --
 this is exactly the pattern that caused the ~€275 uncached LLMHub session
@@ -26,7 +38,6 @@ prints message content, but treat the underlying files as sensitive.
 """
 
 import argparse
-import gzip
 import json
 import sys
 import tarfile
@@ -48,6 +59,41 @@ def iter_jsonl_lines(path_or_fileobj):
             continue
 
 
+def usage_entries(d):
+    """Yield (provider, model, usage_dict) for every billable usage source on
+    one session-log entry, mirroring session-stats.ts's computeSessionStats().
+    """
+    entry_type = d.get("type")
+
+    if entry_type == "message":
+        msg = d.get("message", {}) or {}
+        role = msg.get("role")
+        if role == "assistant" and msg.get("usage"):
+            yield (msg.get("provider", "unknown"), msg.get("model", "unknown"), msg["usage"])
+            return
+        if role == "toolResult":
+            tool_name = msg.get("toolName")
+            usage = msg.get("usage")
+            if not usage and tool_name in ("advisor", "architect"):
+                details = (msg.get("details") or {}).get(tool_name) or {}
+                tool_usage = details.get("usage")
+                if tool_usage:
+                    yield (f"({tool_name})", details.get("model", "unknown"), tool_usage)
+                return
+            if usage:
+                yield ("(tool-internal)", tool_name or "unknown", usage)
+                return
+        return
+
+    if entry_type == "compaction" and d.get("usage"):
+        yield ("(compaction)", "summary", d["usage"])
+        return
+
+    if entry_type == "branch_summary" and d.get("usage"):
+        yield ("(branch-summary)", "summary", d["usage"])
+        return
+
+
 def process_session(lines, session_id, stats, since_dt):
     session_input = 0
     session_cache_read = 0
@@ -56,43 +102,39 @@ def process_session(lines, session_id, stats, since_dt):
     session_ts = None
 
     for d in lines:
-        msg = d.get("message", {})
-        if msg.get("role") != "assistant":
-            continue
-        usage = msg.get("usage")
-        if not usage:
-            continue
+        for provider, model, usage in usage_entries(d):
+            ts = d.get("timestamp") or (d.get("message") or {}).get("timestamp")
+            if ts:
+                try:
+                    ts_dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+                    if since_dt and ts_dt < since_dt:
+                        continue
+                    session_ts = ts_dt if session_ts is None else max(session_ts, ts_dt)
+                except (ValueError, TypeError):
+                    pass
 
-        ts = d.get("timestamp") or msg.get("timestamp")
-        if ts:
-            try:
-                ts_dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-                if since_dt and ts_dt < since_dt:
-                    continue
-                session_ts = ts_dt if session_ts is None else max(session_ts, ts_dt)
-            except (ValueError, TypeError):
-                pass
+            key = (provider, model)
+            session_provider_model = key
 
-        provider = msg.get("provider", "unknown")
-        model = msg.get("model", "unknown")
-        key = (provider, model)
-        session_provider_model = key
+            cost = usage.get("cost", {}) or {}
+            total_cost = cost.get("total", 0) or 0
 
-        cost = usage.get("cost", {}) or {}
-        total_cost = cost.get("total", 0) or 0
+            s = stats[key]
+            s["input"] += usage.get("input", 0) or 0
+            s["output"] += usage.get("output", 0) or 0
+            s["cacheRead"] += usage.get("cacheRead", 0) or 0
+            s["cacheWrite"] += usage.get("cacheWrite", 0) or 0
+            s["reasoning"] += usage.get("reasoning", 0) or 0
+            s["cost"] += total_cost
+            s["turns"] += 1
 
-        s = stats[key]
-        s["input"] += usage.get("input", 0) or 0
-        s["output"] += usage.get("output", 0) or 0
-        s["cacheRead"] += usage.get("cacheRead", 0) or 0
-        s["cacheWrite"] += usage.get("cacheWrite", 0) or 0
-        s["reasoning"] += usage.get("reasoning", 0) or 0
-        s["cost"] += total_cost
-        s["turns"] += 1
-
-        session_input += usage.get("input", 0) or 0
-        session_cache_read += usage.get("cacheRead", 0) or 0
-        session_cost += total_cost
+            # Only real provider input counts toward the zero-cache-read flag --
+            # (advisor)/(architect)/(tool-internal)/(compaction)/(branch-summary)
+            # rows are a different call shape and would create false positives.
+            if provider not in ("(advisor)", "(architect)", "(tool-internal)", "(compaction)", "(branch-summary)"):
+                session_input += usage.get("input", 0) or 0
+                session_cache_read += usage.get("cacheRead", 0) or 0
+            session_cost += total_cost
 
     return {
         "session_id": session_id,
@@ -125,8 +167,12 @@ def main():
     sessions_dir = Path(args.sessions_dir)
     if sessions_dir.is_dir():
         for jsonl_path in sessions_dir.rglob("*.jsonl"):
-            with open(jsonl_path, encoding="utf-8", errors="replace") as f:
-                summary = process_session(iter_jsonl_lines(f), str(jsonl_path), stats, since_dt)
+            try:
+                with open(jsonl_path, encoding="utf-8", errors="replace") as f:
+                    summary = process_session(iter_jsonl_lines(f), str(jsonl_path), stats, since_dt)
+            except OSError as e:
+                print(f"warning: skipping {jsonl_path}: {e}", file=sys.stderr)
+                continue
             session_summaries.append(summary)
 
     if args.include_archives:

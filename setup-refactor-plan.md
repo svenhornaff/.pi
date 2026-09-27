@@ -1602,3 +1602,114 @@ before editing).
   entries) folded into this same log entry and the table edits above, rather
   than as separate diffs — treated as satisfied, not separately tracked.
 - Stopped after the concept doc's §9 "Done when" as instructed; did not push.
+
+---
+
+## Implementation log — 2026-09-27: architect.ts P1/P2 fixes (docs/p-mac-harness.html #actions)
+
+**Scope: P1, the code part of P2, and the small "allow `max` in `/architect thinking`" item from P3. Not done in this pass: the other P2 items (LLMHub cache verification, flaky-gate note, sandboxing) — none had a code component.**
+
+**1. Tool allowlist override (P1) — fixed and reproduced the bug first:**
+
+- `refresh()` in `architect.ts` used to unconditionally re-add `architect` to
+  the active tool set whenever `config.enabled` was true, on every
+  `session_start`/`session_tree`/`before_agent_start`/tool call — silently
+  overriding an explicit `pi -p --tools ...` or `--no-tools` restriction.
+  **Reproduced the bug before fixing it**, via `git stash` of just this
+  file: `pi -p --tools read --model openrouter/anthropic/claude-sonnet-5
+  "List the exact names of every tool you have, one per line."` on the old
+  code → `read / architect / advisor` (both leaked through). Popped the
+  stash to restore the fix.
+- Fix: `refresh()` now only ever *removes* `architect` from the active set,
+  and only when disabled. The only place that adds it back is
+  `/architect enable` (a new `addToolBack()` helper, called explicitly).
+  `registerTool()` still activates the tool by default at registration
+  time, so a normal session (no `--tools` restriction) is unaffected.
+- Verified on the fixed code: `pi -p --tools read --model
+  openrouter/anthropic/claude-sonnet-5 "List the exact names of every tool
+  you have, one per line."` → `read` (architect absent). Also checked
+  `--no-tools` → `NONE`. Also checked that a turn cannot invoke
+  `/architect enable` itself (slash commands are command-layer, not
+  model-callable — the model correctly said so when asked to try).
+- Checked `advisor` (advisor-pi) under the same fixed architect.ts:
+  `pi -p --tools read ... "... Is 'advisor' in that list?"` → `No`, tool
+  list `read` only. **Not reproduced as a live bug in this pi version
+  (0.87.1) with advisor-pi's current installed code** — despite
+  `advisor-pi/src/index.ts`'s `syncActiveTool()` having the same
+  unconditional-add shape architect.ts used to have. Not fully
+  root-caused (extension `session_start` handler ordering/interaction with
+  the `--tools` flag enforcement wasn't traced further), and advisor-pi's
+  own npm package was correctly left unpatched per instruction either way.
+  If this resurfaces on a pi version bump, re-run the same `--tools read`
+  check against `advisor` specifically before assuming it's fixed upstream.
+
+**2. Smoke gate real model spend (P1) — env override, zero-cost A3:**
+
+- `architect.ts`: `DEFAULT_MAX_USES` now reads `PI_ARCHITECT_MAX_USES` once
+  at module load (integer ≥ 0; falls back to 3 on missing/invalid). Only
+  changes what a brand-new branch starts with — a persisted or explicit
+  `/architect max-uses` value still wins.
+- `scripts/smoke-test-extensions.sh` A3 (now A3a/A3b): runs
+  `PI_ARCHITECT_MAX_USES=0` with **one** architect call instead of 4 calls
+  at high thinking to reach a cap of 3. A3a checks the refusal text; A3b
+  runs a new helper, `scripts/architect-call-check.py <session.jsonl>`
+  (found via `find ... -newer <marker>` against a pre-call mktemp marker),
+  which parses the session log and reports `CALL_FOUND NO_USAGE` — i.e. the
+  tool really executed and refused, with no `details.architect.usage`
+  (no real model call, no spend).
+- Ran `./scripts/smoke-test-extensions.sh` → `14 passed, 0 failed` (10
+  original + A1, A2, A3a, A3b). Confirmed A3's real-call-avoidance by
+  design: `useCount(0) >= config.maxUses(0)` is true before any
+  `completeSimple()` call is reached.
+
+**3. `session-usage-report.py` undercounting (P2 code part):**
+
+- Previously read `message.role == "assistant"` only. Now mirrors
+  `session-stats.ts`'s `computeSessionStats()` exactly: `toolResult`
+  entries with their own `usage` → `(tool-internal)`; `toolResult` from
+  `advisor`/`architect` with `details.<toolName>.usage` (only when
+  `message.usage` is absent) → `(advisor)`/`(architect)`; `compaction` →
+  `(compaction)`; `branch_summary` → `(branch-summary)`. The
+  zero-cache-read flag only considers real provider rows (excludes the
+  five synthetic buckets above) to avoid false positives from tool-internal
+  calls that legitimately have no cache.
+- Verified against the real B4/B5 session
+  (`agent/sessions/--Users-brooklyn-Workspace-bulliexplorer--/
+  2026-09-27T12-52-02-967Z_b5-session-stats.jsonl`, from the previous
+  architect.ts pass's manual checks): re-ran `/session-stats` on it →
+  `TOTAL 9 turns, 11,687 fresh-in, 153,424 cacheRead, 39,793 cacheWrite,
+  9,277 output, cost 0.2715`, with `(advisor)/gpt-5.6-sol` (1 turn, 5,340
+  in, 1,121 out, 0.0438) and `(architect)/gpt-5.6-terra` (1 turn, 6,333 in,
+  1,670 out, 0.0327) broken out. Copied that one file to a scratch dir and
+  ran `python3 scripts/session-usage-report.py --sessions-dir
+  /tmp/b4-report-check` → identical turns/input/output/cacheRead/
+  cacheWrite/cost for all three rows and the same `TOTAL 0.2715`. Exact
+  match, not just "in the right ballpark."
+
+**4. `/architect thinking max` (small, P3):**
+
+- `THINKING_LEVELS` (the local validation array for the command) now
+  includes `"max"`. No type change needed: the installed
+  `@earendil-works/pi-ai`'s `ThinkingLevel` type already includes `"max"`
+  (`export type ThinkingLevel = "minimal" | "low" | "medium" | "high" |
+  "xhigh" | "max"`) — advisor-pi's separate `AdvisorThinkingLevel =
+  ThinkingLevel | "max"` widening predates that and is now redundant in
+  the installed version, though harmless there.
+
+**Housekeeping:**
+
+- Line budget: intermediate edits pushed `architect.ts` to 211 lines;
+  compacted the new comments/handlers back to the file's existing
+  one-liner style → 198 lines (≤200, matching the original budget from the
+  first architect.ts pass, even though this task didn't restate it).
+- `.gitignore`: added `__pycache__/` / `**/__pycache__/` — `scripts/
+  architect-call-check.py` (a new Python script) produced one on its first
+  run and it wasn't previously excluded.
+- JSON validated (`agent/settings.json`, `agent/models.json`,
+  `web-search.json` — unchanged by this pass, checked anyway per the PR
+  checklist): all three parse.
+- Public surface diff: new env var `PI_ARCHITECT_MAX_USES`, new script
+  `scripts/architect-call-check.py` (smoke-test helper only, not a
+  standalone entry point); no tool/command/setting removed or renamed.
+  `README.md` and `Pi-Setup-Guide.md` §5/§9 updated.
+- Not pushed, per instruction.

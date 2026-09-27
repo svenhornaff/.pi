@@ -10,11 +10,18 @@ export const STATE_ENTRY = "architect-state";
 const TOOL_NAME = "architect";
 const DEFAULT_MODEL = "openai-codex/gpt-5.6-terra";
 const DEFAULT_THINKING: ThinkingLevel = "high";
-const DEFAULT_MAX_USES = 3;
+// PI_ARCHITECT_MAX_USES overrides the default (3) for a brand-new branch's use cap, read once
+// at load (used by smoke A3 to reach the cap for free); a stored/explicit max-uses always wins.
+const DEFAULT_MAX_USES = ((): number => {
+	const raw = process.env.PI_ARCHITECT_MAX_USES;
+	if (raw === undefined) return 3;
+	const n = Number.parseInt(raw, 10);
+	return Number.isFinite(n) && n >= 0 ? n : 3;
+})();
 const DEFAULT_MAX_TOKENS = 4_000;
 const DEFAULT_TIMEOUT_MS = 600_000;
 const DEFAULT_MAX_TRANSCRIPT_CHARS = 20_000;
-const THINKING_LEVELS = ["minimal", "low", "medium", "high", "xhigh"];
+const THINKING_LEVELS = ["minimal", "low", "medium", "high", "xhigh", "max"];
 const schema = Type.Object({
 	question: Type.String({ description: "The change to design, in one or two sentences." }),
 	context: Type.Optional(Type.String({ description: "Excerpts the executor has read: paths, line ranges, snippets, constraints." })),
@@ -103,11 +110,13 @@ export default function architectExtension(pi: ExtensionAPI) {
 				if (typeof details?.state?.useCount === "number") useCount = Math.max(useCount, details.state.useCount);
 			}
 		}
+		// Only ever REMOVE here, never add -- adding unconditionally overrode an explicit --tools/
+		// --no-tools restriction. registerTool() activates by default; only /architect enable adds it back.
 		const active = pi.getActiveTools();
-		const has = active.includes(TOOL_NAME);
-		if (config.enabled && !has) pi.setActiveTools([...active, TOOL_NAME]);
-		else if (!config.enabled && has) pi.setActiveTools(active.filter((t) => t !== TOOL_NAME));
+		if (!config.enabled && active.includes(TOOL_NAME)) pi.setActiveTools(active.filter((t) => t !== TOOL_NAME));
 	}
+	// Only place besides registration that re-adds the tool -- see refresh() above.
+	const addToolBack = () => { const a = pi.getActiveTools(); if (!a.includes(TOOL_NAME)) pi.setActiveTools([...a, TOOL_NAME]); };
 	const persist = () => pi.appendEntry(STATE_ENTRY, stateEntry(config, useCount));
 
 	pi.registerTool<typeof schema, Details>({
@@ -161,7 +170,7 @@ export default function architectExtension(pi: ExtensionAPI) {
 			const value = rest.join(" ").trim();
 			const usage = "Usage: /architect [status|enable|disable|model <provider>/<id>|thinking <level>|max-uses <n>]";
 			if (!cmd || cmd === "status") { const found = ctx.modelRegistry.find(config.provider, config.modelId); return notify(ctx, `architect ${config.enabled ? "enabled" : "disabled"} • model: ${config.provider}/${config.modelId} (${found ? "available" : "not found"}) • thinking: ${config.thinking} • uses: ${useCount}/${config.maxUses}`); }
-			if (cmd === "enable" || cmd === "disable") { config.enabled = cmd === "enable"; return persist(), refresh(ctx), notify(ctx, `architect ${config.enabled ? "enabled" : "disabled"}`); }
+			if (cmd === "enable" || cmd === "disable") { config.enabled = cmd === "enable"; persist(); refresh(ctx); if (config.enabled) addToolBack(); return notify(ctx, `architect ${config.enabled ? "enabled" : "disabled"}`); }
 			if (cmd === "model") {
 				const slash = value.indexOf("/");
 				const [provider, modelId] = [value.slice(0, slash), value.slice(slash + 1)];
