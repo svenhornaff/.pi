@@ -34,6 +34,10 @@ setup-refactor-plan.md  Living decision log for this config (read this for
 llmhub-model-pricing.md Reference pricing catalog for the LLMHub provider
 prompt-cache-analysis.md Root-cause writeup of a real prompt-caching cost
                         incident that shaped several settings below
+Pi-Setup-Guide.md       As-is reference of the live config (regenerate after
+                        material changes)
+t-mac-upstream-assessment.md  What to port from the t-mac branch and what
+                        stays branch-local
 ```
 
 ## Setup on a new machine
@@ -97,7 +101,7 @@ cd searxng && docker compose up -d
 | `protected-paths.ts` | Blocks writes/edits to secrets, pi's own config files, and `.env*`/`.ssh/`/`.gnupg/` — including via bash redirection, not just the write/edit tools |
 | `git-checkpoint.ts` | Auto-checkpoints (git stash create) before risky turns; skips cleanly on non-git dirs or clean trees |
 | `session-stats.ts` | `/session-stats` — cumulative token usage & cost for the current session, broken out by model, with fresh-vs-cached input and a zero-cache-read warning |
-| `obsidian-sync.ts` | Syncs session summaries into an Obsidian vault |
+| `obsidian-sync.ts` | `/obsidian` — syncs repository markdown (README, AGENTS.md, `docs/**`, …) into the Obsidian vault configured in `settings.json` → `obsidian` |
 | `tool-counter-widget.ts`, `theme-cycler.ts`, `welcome-dashboard.ts`, `session-name.ts` | TUI ergonomics |
 | `status-footer.ts.disabled-superseded-by-statusline-pi` | Retired 2026-08-29 — superseded by the `statusline-pi` npm package below, which covers the same ground plus CPU/MEM, tokens/sec, PR number, and live cost. Kept on disk, renamed, for reference. |
 

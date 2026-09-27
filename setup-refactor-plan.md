@@ -2,7 +2,7 @@
 
 Date: 2026-08-29 (created); re-audited and partially implemented same day  
 Scope: local Pi coding-agent configuration under `/Users/brooklyn/.pi`  
-Pi version inspected: `0.84.4`
+Pi version inspected: `0.84.4` (original audit) · currently installed: `0.87.1` (2026-09-27)
 
 **Status legend:** ✅ done and verified · 🟡 in progress / partially done · 🔴 open
 
@@ -18,8 +18,8 @@ Top priorities (original pass):
 2. **P0 — Reconcile model config:** `models.json` is much smaller than the documented intended setup and contains stale/mis-scaled OpenRouter manual entries plus zero-cost LLMHub entries. ✅ **Resolved** — OpenRouter now catalogue-backed, LLMHub removed from `enabledModels`.
 3. **P1 — Refactor global extensions:** multiple global extensions still import old `@mariozechner/*` package names and use stale event names (`session_switch`, `session_fork`) not present in current Pi docs. ✅ **Resolved 2026-08-29 (re-audit)** — see "Re-audit findings" and Phase 4 implementation log.
 4. **P0 — Prompt caching for LLMHub Claude models:** `prompt-cache-analysis.md` documented a real ~€275, 235-turn session with zero `cacheRead`/`cacheWrite` because `llmhub/claude-sonnet-4.6` was missing `compat.cacheControlFormat: "anthropic"` and had `cost: 0` (invisible spend). 🟡 **Config fixed 2026-08-29**, brought back into `enabledModels` with real costs and the caching flag — but **live verification is currently blocked** because the LLMHub project has hit its monthly budget limit (confirmed via direct API call, HTTP 429, unrelated to pi config). Re-verify once quota resets.
-5. **P1 — Decide web-search default policy:** current `web-search.json` is optimized for high-stakes multi-provider coverage, but this makes every ordinary web search fan out across OpenAI, Exa, Brave, Tavily, and SearXNG. 🔴 **Still open** — see Phase 5.
-6. **P2 — Clean project-local MCP drift:** `pi-mcp-adapter` is installed only under `~/.pi/agent/.pi`, but no `mcp.json` exists; caches are stale. 🔴 **Still open** — see Phase 7.
+5. **P1 — Decide web-search default policy:** current `web-search.json` is optimized for high-stakes multi-provider coverage, but this makes every ordinary web search fan out across OpenAI, Exa, Brave, Tavily, and SearXNG. ✅ **Resolved 2026-08-29** — SearXNG-first sequential routing is the daily default; full fan-out moved to `/high-stakes-web-research`. See Phase 5 and the 2026-08-29 `contextPrune`/Phase 5 log entry. _(Status marker updated 2026-09-27.)_
+6. **P2 — Clean project-local MCP drift:** `pi-mcp-adapter` is installed only under `~/.pi/agent/.pi`, but no `mcp.json` exists; caches are stale. ✅ **Resolved 2026-08-29** — `pi-mcp-adapter` removed (Phase 7, Option A). _(Status marker updated 2026-09-27.)_
 
 ---
 
@@ -1374,3 +1374,63 @@ before editing).
 - `agent/settings.json` carries an uncommitted pi-written change
   (`lastChangelogVersion` 0.84.4 → 0.85.1, plus a dropped trailing newline) —
   benign churn from pi itself; commit as-is or leave to pi.
+
+---
+
+## Implementation log — 2026-09-27: subagent layer reverted; documentation refreshed
+
+**Found:**
+
+- A phased, in-house subagent layer was built on this branch between 2026-09-23
+  and 2026-09-26 (`e21d947`, `ab30c6a`, `865cbd7`, `61aa68b`): a vendored copy of
+  pi's reference `subagent` extension with launch-contract changes, a `_probe`
+  agent, lint and unit-test scripts, a `/review-fresh` prompt, smoke cases S1–S4,
+  and an evaluation framework (`~/pi-eval` benchmark repos, `docs/eval/`,
+  `eval-worktree.sh`, `eval-metrics.py`, `lint-eval-cards.py`).
+- Decision (owner): too heavy and too complicated for a personal harness. The
+  value it was meant to prove (fresh-context review, cheap exploration) is
+  available from maintained packages with far less surface to own.
+- `Pi-Setup-Guide.md` was stale: it still stated pi v0.84.4, that `~/.pi` is not a
+  git repo, listed only 2 of 8 packages, listed `status-footer.ts` as active,
+  omitted `session-stats.ts`, and counted 9 smoke checks instead of 10.
+- This plan's executive-summary items 5 (web-search default) and 6 (MCP drift)
+  still showed 🔴 although both were resolved on 2026-08-29.
+- README described `obsidian-sync.ts` as syncing "session summaries"; it syncs
+  repository markdown (`/obsidian`, "Sync repository markdown docs to an Obsidian vault").
+
+**Done:**
+
+- Tagged the full attempt as `subagent-attempt-1` and pushed the tag.
+- Reverted all four commits with `git revert` (no history rewrite):
+  `138a9f6`, `6a66ae5`, `9711332`, `9ac6f5a`. The tree is identical to `3f49563`.
+  This also reverted `typebox` and `"type": "module"` in
+  `agent/extensions/package.json` and `lastChangelogVersion` back to `0.85.1`
+  (pi rewrites that marker itself; installed version is 0.87.1).
+- Regenerated `Pi-Setup-Guide.md` from the tracked config (v0.87.1, git-repo
+  branches, all 8 packages, current extensions, 10 smoke checks, documentation map).
+- Updated the status markers of executive-summary items 5 and 6 (past log
+  entries unchanged).
+- README: corrected the `obsidian-sync.ts` description; added `Pi-Setup-Guide.md`
+  and `t-mac-upstream-assessment.md` to the layout.
+
+**Verified:**
+
+- `git diff 3f49563 HEAD --stat` (before this doc commit) → empty.
+- `git ls-remote --tags origin subagent-attempt-1` → tag present.
+- Owner to confirm on the machine: `scripts/smoke-test-extensions.sh` → 10/10,
+  and `npm install` in `agent/extensions` to drop `typebox` from `node_modules`.
+
+**Lighter option, noted only (nothing installed):**
+
+- Fresh-context review: `earendil-works/pi-review` (`/review`, `/end-review`).
+  Runs as a branch of the current session, so guardrails and `/session-stats`
+  apply unchanged.
+- Exploration: `@mjakl/pi-subagent` with a single repo-owned `explore.md`
+  (`tools: read,grep,find,ls`). Children are separate pi processes that load
+  the global extensions; UI prompts are auto-cancelled, so `permission-gate.ts`
+  fails closed. The explicit `tools` list keeps `advisor` out of children.
+- If adopted: one manual guardrail check (child `git push` and `.env` write
+  both blocked) and a two-week use test instead of a benchmark framework.
+
+**Leftovers outside git (owner's machine):** `~/.pi/agent/sessions/subagents/`,
+`~/pi-eval/`, any `/tmp/eval-*` worktrees. Delete or keep; none affect pi.
