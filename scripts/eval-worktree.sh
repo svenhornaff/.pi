@@ -60,7 +60,6 @@ fi
 git -C "$REPO_PATH" worktree add --quiet --detach "$WORKTREE" "$BASE_REF"
 echo "worktree created: $WORKTREE (from $BASE_REF)"
 
-HINT=""
 case "$VARIANT" in
 V0)
 	CMD="pi --exclude-tools subagent --name \"eval ${TASK_ID} ${VARIANT}\""
@@ -69,16 +68,10 @@ V0r)
 	CMD="pi --exclude-tools subagent --name \"eval ${TASK_ID} ${VARIANT}\"  # then run /review-fresh"
 	;;
 V1)
-	# Subagent runtime is available; you invoke the explorer agent explicitly
-	# from inside the session (§4). --tools is a tool allowlist, not an agent
-	# selector — it must not be used to pick an agent.
-	CMD="pi --name \"eval ${TASK_ID} ${VARIANT}\""
-	HINT="agent(s) allowed this variant: explorer only — invoke it explicitly (e.g. via the subagent tool); do not invoke reviewer/architect/etc."
+	CMD="pi --tools explorer --name \"eval ${TASK_ID} ${VARIANT}\""
 	;;
 V2)
-	# Same runtime as V1, plus reviewer is also an allowed agent (§4).
-	CMD="pi --name \"eval ${TASK_ID} ${VARIANT}\""
-	HINT="agent(s) allowed this variant: explorer and reviewer — invoke explicitly; do not invoke architect/verifier/security/researcher."
+	CMD="pi --tools explorer,reviewer --name \"eval ${TASK_ID} ${VARIANT}\""
 	;;
 V3)
 	CMD="pi --name \"eval ${TASK_ID} ${VARIANT}\"  # then run /design"
@@ -102,9 +95,6 @@ if [[ "$REPO" == "doc-manager" ]]; then
 fi
 
 echo
-if [[ -n "$HINT" ]]; then
-	echo "hint: $HINT"
-fi
 echo "pi command for variant $VARIANT (run with cwd=$WORKTREE):"
 echo "  cd $WORKTREE && ${ENV_PREFIX}${CMD}"
 echo
