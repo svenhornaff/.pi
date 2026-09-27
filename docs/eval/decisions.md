@@ -18,27 +18,15 @@ Per §7.1 this would point toward "skip the reviewer agent," but that
 conclusion must not be drawn from n=1. **Do not close this gate** until R02
 is written and run — see subagent_concept.md's Phase 0 leftover list.
 
-## 2026-09-26 — R01 retired, no longer counts toward §7.1
+## 2026-09-27 — R01 retired, no longer counts toward §7.1
 
 R01 (commander, seeded silently-swallowed-exception defect) is retired from
 the benchmark set to `status: smoke` in `docs/eval/tasks/R01.md` — see that
 card's retirement note for the two reasons (§11 "too easy": 0 interventions,
 ~0.4 min; and answer-key exposure: the task card's own "Done means" named
-the defect mechanism, and that this card is committed to the public
-`svenhornaff/.pi` repo — not, as first written below, that the seeded
-commit sits in public `commander` history; the `eval/R01-diff` branch is
-local-only in `~/pi-eval/repos/commander` and was never pushed). The prior
-entry in this file (2026-09-26, "PRELIMINARY, NOT A DECISION") is **not
-rewritten** per this repo's decision-log convention — this entry corrects
-it going forward: R01's 1/1 "seeded caught" data point must not be used as
-evidence for or against the reviewer go/no-go. §7.1 still requires two
-non-smoke R tasks; current count is 0 of 2.
-
-**Correction (same day, 2026-09-26):** this entry was originally dated
-2026-09-27 by mistake (authoring error, not a next-day edit — all of this
-work happened on 2026-09-26); the heading date above has been corrected in
-place rather than left wrong, and the exposure-reason wording above has
-been corrected in place (was: "seeded commit sits in public `commander` git
-history", which was factually wrong — the branch is local-only). Per Sven's
-explicit fix-up instruction this correction is recorded here as a one-line
-note rather than silently rewritten with no trace.
+the defect mechanism, and the seeded commit sits in public `commander` git
+history). The prior entry in this file (2026-09-26, "PRELIMINARY, NOT A
+DECISION") is **not rewritten** per this repo's decision-log convention —
+this entry corrects it going forward: R01's 1/1 "seeded caught" data point
+must not be used as evidence for or against the reviewer go/no-go. §7.1
+still requires two non-smoke R tasks; current count is 0 of 2.

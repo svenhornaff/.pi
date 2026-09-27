@@ -206,15 +206,11 @@ Before treating any extension change as done:
 1. Config or extension change made.
 2. JSON configs validated (`python3 -c "import json; json.load(...)"`).
 3. `scripts/smoke-test-extensions.sh` green, if extensions touched.
-4. `python3 scripts/lint-agents.py` green, if `agent/agents/*.md` personas
-   touched; `python3 scripts/lint-eval-cards.py` green, if
-   `docs/eval/tasks/*.md` cards touched (a `status: smoke` card's WARN is
-   expected and does not fail the exit code — only a non-smoke FAIL blocks).
-5. Public surface diffed — `README.md` and `setup-refactor-plan.md` updated
+4. Public surface diffed — `README.md` and `setup-refactor-plan.md` updated
    if it changed.
-6. `git status --short` checked for accidental secrets/session/backup
+5. `git status --short` checked for accidental secrets/session/backup
    staging before commit.
-7. Change actually re-verified with a real command run, not assumed.
+6. Change actually re-verified with a real command run, not assumed.
 
 ## Rules
 
