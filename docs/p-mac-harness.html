@@ -81,10 +81,10 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
 <header>
   <span class="eyebrow">svenhornaff/.pi · branch p-mac · ~/.pi on the private MacBook</span>
   <h1>p-mac Pi Harness</h1>
-  <p class="lede">As-is documentation of the global pi configuration that every project on this machine inherits: models, guardrails, context and cost controls, web search, maintenance scripts, and the repo's own history. Generated from the pushed branch, not from memory.</p>
+  <p class="lede">As-is documentation of the global pi configuration that every project on this machine inherits: models, guardrails, context and cost controls, web search, maintenance scripts, the repo's history, and a scored review with the actions that stop known problems from recurring. Generated from the pushed branch, not from memory.</p>
   <div class="meta">
-    <span>HEAD <b>9ac6f5a</b></span>
-    <span>file tree = <b>3f49563</b> (2026-09-07)</span>
+    <span>HEAD <b>9ab7bd1</b></span>
+    <span>review + KPI rating <b>7.3 / 10</b></span>
     <span>pi installed <b>0.87.1</b></span>
     <span>documented <b>2026-09-27</b></span>
   </div>
@@ -96,9 +96,10 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
     <div class="fact"><span class="v">sonnet-5</span><span class="k">default model, via OpenRouter, thinking medium</span></div>
     <div class="fact"><span class="v">9</span><span class="k">enabled models across 4 providers</span></div>
     <div class="fact"><span class="v">8</span><span class="k">npm packages loaded globally</span></div>
-    <div class="fact"><span class="v">9 + 1</span><span class="k">local extensions + shared themeMap helper</span></div>
+    <div class="fact"><span class="v">10 + 1</span><span class="k">local extensions (incl. <code>architect</code>) + themeMap helper</span></div>
     <div class="fact"><span class="v">3</span><span class="k">trusted projects in <code>trust.json</code></span></div>
-    <div class="fact"><span class="v">10</span><span class="k">smoke-test checks, the "done" gate for extensions</span></div>
+    <div class="fact"><span class="v">7.3</span><span class="k">weighted KPI score out of 10 (see Review)</span></div>
+    <div class="fact"><span class="v">13</span><span class="k">smoke-test checks, the "done" gate for extensions</span></div>
   </div>
 </section>
 
@@ -107,7 +108,7 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
   <p>Every tool call the model makes passes two local hooks before it executes. There is no sandbox underneath: these hooks are the only isolation layer in front of the trusted projects, which is why the repo treats them as untouchable without a matching smoke test.</p>
   <figure>
     <div class="svgbox">
-    <svg viewBox="0 0 860 400" role="img" aria-label="A prompt enters the pi agent loop; each tool call passes permission-gate and protected-paths before reaching the tools; results flow back through pi-lens diagnostics; git-checkpoint snapshots on turn start and pi-condense prunes finished tool batches.">
+    <svg viewBox="0 0 860 400" role="img" aria-label="A prompt enters the pi agent loop, which may consult advisor or architect as tools; each tool call passes permission-gate and protected-paths before reaching the tools; results flow back through pi-lens diagnostics; git-checkpoint snapshots on turn start and pi-condense prunes finished tool batches.">
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
         <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D14B3D"/></marker>
@@ -129,14 +130,14 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
         <text x="275" y="61" text-anchor="middle" font-weight="600">git-checkpoint</text>
         <text x="275" y="78" text-anchor="middle" font-size="11" opacity=".7">stash create if tree dirty</text>
         <line x1="275" y1="90" x2="275" y2="148" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah)"/>
-        <text x="283" y="124" font-size="11" opacity=".75">turn_start</text>
+        <text x="267" y="124" text-anchor="end" font-size="11" opacity=".75">turn_start</text>
 
         <!-- condense -->
         <rect x="190" y="300" width="170" height="50" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="4 3"/>
         <text x="275" y="321" text-anchor="middle" font-weight="600">pi-condense</text>
         <text x="275" y="338" text-anchor="middle" font-size="11" opacity=".7">prunes finished tool batches</text>
         <line x1="275" y1="298" x2="275" y2="228" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah)"/>
-        <text x="283" y="268" font-size="11" opacity=".75">summaries, recoverable</text>
+        <text x="283" y="262" font-size="11" opacity=".75">summaries,</text><text x="283" y="276" font-size="11" opacity=".75">recoverable</text>
 
         <!-- user to loop -->
         <line x1="130" y1="188" x2="188" y2="188" stroke="currentColor" stroke-opacity=".7" marker-end="url(#ah)"/>
@@ -160,7 +161,7 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
 
         <!-- blocked back -->
         <path d="M430,140 C395,140 380,165 362,170" fill="none" stroke="#D14B3D" stroke-width="1.3" marker-end="url(#ahw)"/>
-        <text x="330" y="108" text-anchor="middle" font-size="11" fill="#D14B3D">block + reason</text>
+        <text x="424" y="130" text-anchor="end" font-size="11" fill="#D14B3D">block + reason</text>
 
         <!-- tools -->
         <text x="740" y="46" text-anchor="middle" font-size="11" font-family="JetBrains Mono, monospace" opacity=".7">tools</text>
@@ -168,11 +169,11 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
         <text x="750" y="76" text-anchor="middle" font-weight="600">read · bash · edit · write</text>
         <text x="750" y="92" text-anchor="middle" font-size="11" opacity=".7">built-ins</text>
         <rect x="660" y="112" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
-        <text x="750" y="132" text-anchor="middle" font-weight="600">web_search · fetch_content</text>
+        <text x="750" y="132" text-anchor="middle" font-weight="600" font-size="11.5">web_search · fetch_content</text>
         <text x="750" y="148" text-anchor="middle" font-size="11" opacity=".7">pi-web-access</text>
         <rect x="660" y="168" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
-        <text x="750" y="188" text-anchor="middle" font-weight="600">advisor</text>
-        <text x="750" y="204" text-anchor="middle" font-size="11" opacity=".7">gpt-5.6-sol · max 5 / branch</text>
+        <text x="750" y="188" text-anchor="middle" font-weight="600">advisor · architect</text>
+        <text x="750" y="204" text-anchor="middle" font-size="11" opacity=".7">2nd model, no tools · cap 5 / 3</text>
         <rect x="660" y="224" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
         <text x="750" y="244" text-anchor="middle" font-weight="600">ask_user_question</text>
         <text x="750" y="260" text-anchor="middle" font-size="11" opacity=".7">rpiv-ask-user-question</text>
@@ -187,7 +188,7 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
       </g>
     </svg>
     </div>
-    <figcaption>One turn. Red is the only enforcement point: <code>permission-gate</code> asks you (or blocks outright in <code>pi -p</code>, where there is no UI), <code>protected-paths</code> blocks without asking. Results return through <code>pi-lens</code> diagnostics; long sessions stay affordable through <code>pi-condense</code> and native compaction.</figcaption>
+    <figcaption>One turn. Red is the only enforcement point: <code>permission-gate</code> asks you (or blocks outright in <code>pi -p</code>, where there is no UI), <code>protected-paths</code> blocks without asking. Results return through <code>pi-lens</code> diagnostics; long sessions stay affordable through <code>pi-condense</code> and native compaction. <code>advisor</code> and <code>architect</code> are one extra model call each, inside the session: no tools, no second process.</figcaption>
   </figure>
 </section>
 
@@ -256,7 +257,8 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
     <tbody>
       <tr><td><code>anthropic/claude-sonnet-5</code></td><td>openrouter</td><td>Default. Chosen as a cost/capability balance, not the strongest option.</td></tr>
       <tr><td><code>gpt-5.6-sol</code></td><td>openai-codex</td><td>Advisor model (high thinking, capped at 5 calls per session branch).</td></tr>
-      <tr><td><code>gpt-5.6-luna</code>, <code>-terra</code></td><td>openai-codex</td><td>Available for manual switching.</td></tr>
+      <tr><td><code>gpt-5.6-terra</code></td><td>openai-codex</td><td>Architect model (high thinking, capped at 3 calls per session branch). Different family from the main model on purpose.</td></tr>
+      <tr><td><code>gpt-5.6-luna</code></td><td>openai-codex</td><td>Available for manual switching.</td></tr>
       <tr><td><code>glm-5.3</code>, <code>kimi-k3</code>, <code>deepseek-v4-pro</code></td><td>openrouter</td><td>Cheaper alternatives for manual switching.</td></tr>
       <tr><td><code>openai/gpt-4.1-mini</code></td><td>openrouter</td><td>pi-condense summarizer. Not in <code>enabledModels</code>; set in <code>contextPrune</code>. Replaced a local Ollama summarizer that was flaky under load.</td></tr>
       <tr><td><code>claude-sonnet-4.6</code></td><td>llmhub</td><td>Enabled; cache flag and real pricing configured.</td></tr>
@@ -276,7 +278,8 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
       <tr><td><code>permission-gate.ts</code></td><td><code>tool_call</code></td><td>Regex check on bash: destructive fs ops, <code>sudo</code>, DROP/TRUNCATE, curl-into-shell, ssh/scp/rsync, <code>git push</code>, <code>gh pr merge</code>, releases, <code>npm publish</code>, global installs, Docker home mounts, Keychain / 1Password / cloud-auth reads. Asks in the TUI; blocks outright without UI.</td></tr>
       <tr><td><code>protected-paths.ts</code></td><td><code>tool_call</code></td><td>Blocks writes to secrets and pi's own config via write/edit and via bash write destinations (<code>&gt;</code>, <code>tee</code>, <code>sed -i</code>). Read-only commands that merely mention a path are allowed.</td></tr>
       <tr><td><code>git-checkpoint.ts</code></td><td><code>turn_start</code>, <code>session_before_fork</code></td><td><code>git stash create</code> per turn when the tree is dirty; <code>/fork</code> offers to restore code to that point. No-ops outside git.</td></tr>
-      <tr><td><code>session-stats.ts</code></td><td><code>/session-stats</code></td><td>Session cost by model: fresh vs cached input, cache writes, output, compaction and tool-internal usage. Warns on zero cache reads.</td></tr>
+      <tr><td><code>session-stats.ts</code></td><td><code>/session-stats</code></td><td>Session cost by model: fresh vs cached input, cache writes, output, compaction and tool-internal usage, plus separate <code>(advisor)</code> and <code>(architect)</code> rows. Warns on zero cache reads.</td></tr>
+      <tr><td><code>architect.ts</code></td><td><code>architect</code> tool, <code>/architect</code></td><td>One extra model call (gpt-5.6-terra, high, cap 3 per branch) that turns evidence main has gathered into a structured design plan. No tools, no file access. Main calls it on its own for multi-file or cross-module changes, or on request; <code>/design</code> forces the full gate.</td></tr>
       <tr><td><code>obsidian-sync.ts</code></td><td><code>/obsidian</code></td><td>Syncs project markdown into an Obsidian vault (<code>settings.json → obsidian</code>).</td></tr>
       <tr><td><code>session-name.ts</code></td><td><code>/session-name</code></td><td>Human-readable names in <code>/resume</code>.</td></tr>
       <tr><td><code>tool-counter-widget.ts</code></td><td><code>/toolcount</code>, <code>/resetcount</code></td><td>Tool-call counter.</td></tr>
@@ -337,8 +340,8 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
     <div class="card">
       <h3>Visibility</h3>
       <ul>
-        <li><code>/session-stats</code>: current session</li>
-        <li><code>scripts/session-usage-report.py</code>: all sessions, flags zero-cache-read sessions</li>
+        <li><code>/session-stats</code>: current session, including advisor and architect calls</li>
+        <li><code>scripts/session-usage-report.py</code>: all sessions, flags zero-cache-read sessions. Counts main-model turns only (see Actions)</li>
         <li>statusline-pi shows live cost</li>
       </ul>
     </div>
@@ -388,6 +391,7 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
       <tr><td><code>/high-stakes-web-research &lt;topic&gt;</code></td><td>2–4 varied queries across all five providers in parallel, full content, summary-review workflow. For architecture choices, security claims, pricing, dependencies.</td></tr>
       <tr><td><code>/standup</code></td><td>Yesterday / Today / Blockers from recent git activity.</td></tr>
       <tr><td><code>/changelog</code></td><td>Changelog from git history.</td></tr>
+      <tr><td><code>/design &lt;change&gt;</code></td><td>Investigate, consult <code>architect</code> (at most one follow-up), write <code>PLAN.md</code>, open it in Plannotator, wait for approval. <code>advisor</code> only if the plan says Escalate: yes.</td></tr>
     </tbody>
   </table>
   </div>
@@ -399,7 +403,7 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
     <div class="card">
       <h3>Scripts</h3>
       <ul>
-        <li><code>smoke-test-extensions.sh</code>: load with and without tools; permission-gate blocks a dangerous and a credential command and allows a benign one; protected-paths blocks <code>.env</code> via tool and via bash redirection, allows read-only mentions; git-checkpoint behaves in git and non-git dirs. Default model sonnet-5, overridable with <code>--model</code>.</li>
+        <li><code>smoke-test-extensions.sh</code>: load with and without tools; permission-gate blocks a dangerous and a credential command and allows a benign one; protected-paths blocks <code>.env</code> via tool and via bash redirection, allows read-only mentions; git-checkpoint behaves in git and non-git dirs; architect loads (A1), disables cleanly (A2) and refuses past its cap (A3). 13 checks. Default model sonnet-5, overridable with <code>--model</code>.</li>
         <li><code>session-usage-report.py</code>: cost and cache report across all sessions and archives.</li>
         <li><code>archive-old-sessions.sh</code>: archives sessions older than 90 days; <code>--dry-run</code> first.</li>
       </ul>
@@ -449,39 +453,101 @@ footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padd
     <div class="ev hl"><time>2026-09-07</time><div>OpenRouter <code>claude-sonnet-5</code> fixed, smoke test 0/10 → 10/10. Current baseline. <span class="h">3f49563</span></div></div>
     <div class="ev"><time>2026-09-23 → 26</time><div>Subagent layer attempt: vendored runtime, eval framework, benchmark repos. Tagged <code>subagent-attempt-1</code>. <span class="h">e21d947 … 61aa68b</span></div></div>
     <div class="ev rv"><time>2026-09-27</time><div>All four subagent commits reverted: too heavy for a personal harness. Tree identical to 3f49563. <span class="h">138a9f6 … 9ac6f5a</span></div></div>
+    <div class="ev"><time>2026-09-27</time><div>Docs refreshed: setup guide regenerated, decision-log status fixed, this page added. <span class="h">4e1abd3 · 25ef2af · 891d287</span></div></div>
+    <div class="ev hl"><time>2026-09-27</time><div><code>architect</code> tool added in advisor style (189 lines), <code>/design</code>, advisor/architect spend in <code>/session-stats</code>, diagram fixes. Behaviour checks B1–B4 passed; B2 needed one guidance revision. Smoke 13/13. <span class="h">9ab7bd1</span></div></div>
   </div>
 </section>
 
 <section>
-  <h2>Findings</h2>
-  <div class="card">
-    <div class="finding"><span class="pill p-ok">fixed</span><div><code>Pi-Setup-Guide.md</code> regenerated (pi 0.87.1, git branches, all 8 packages, 10 smoke checks). Fixed in the 2026-09-27 docs commit.</div></div>
-    <div class="finding"><span class="pill p-warn">version</span><div><code>settings.json</code> records <code>lastChangelogVersion 0.85.1</code>; pi 0.87.1 is installed. The revert put the old marker back. Harmless, but pi will show the changelog again.</div></div>
-    <div class="finding"><span class="pill p-warn">open</span><div>LLMHub cache fix is configured but not live-verified end to end. It was blocked by the project's monthly spend cap.</div></div>
-    <div class="finding"><span class="pill p-warn">open</span><div>No sandbox. Guardrails are regex and substring checks, and <code>pi-web-access</code> fetches arbitrary URLs. Container or VM isolation for the trusted projects remains the one open item from the recommended-next-steps list.</div></div>
-    <div class="finding"><span class="pill p-ok">fixed</span><div><code>setup-refactor-plan.md</code> status markers for web search and MCP set to resolved; new 2026-09-27 entry logs the subagent revert. README <code>obsidian-sync</code> description corrected. Same commit.</div></div>
-    <div class="finding"><span class="pill p-info">note</span><div><code>trust.json</code> and the Obsidian vault use <code>/Users/brooklyn</code> paths. Correct for this machine; they are why the branch must never be merged into <code>t-mac</code>.</div></div>
-    <div class="finding"><span class="pill p-ok">by design</span><div>MCP deliberately not configured; the old <code>pi-mcp-adapter</code> was removed as unused.</div></div>
-  </div>
-</section>
-
-<section>
-  <h2>Next, if delegation comes back</h2>
-  <p>Proposal only, nothing installed. It replaces the rolled-back runtime with two maintained packages and one agent file.</p>
+  <h2>Design consultation</h2>
+  <p>Delegation came back in the lightest form available: a second model call, not a second agent. <code>architect</code> reuses the <code>advisor-pi</code> mechanism with a different job, model and cap.</p>
   <div class="tbl">
   <table>
-    <thead><tr><th>Need</th><th>Candidate</th><th>Why it fits</th></tr></thead>
+    <thead><tr><th></th><th><code>advisor</code></th><th><code>architect</code></th></tr></thead>
     <tbody>
-      <tr><td>Fresh-context review</td><td><code>earendil-works/pi-review</code> (<code>/review</code>, <code>/end-review</code>)</td><td>Runs as a branch of your own session, so guardrails and <code>/session-stats</code> apply unchanged. Used by the pi maintainers.</td></tr>
-      <tr><td>Exploration without context bloat</td><td><code>@mjakl/pi-subagent</code> + one <code>explore.md</code></td><td>Children are separate pi processes that load your global extensions; UI prompts are auto-cancelled, so permission-gate fails closed. Set <code>tools: read,grep,find,ls</code> so the advisor tool stays out.</td></tr>
+      <tr><td>Answers</td><td>What should I do next, am I going wrong?</td><td>What is the smallest coherent design for this change?</td></tr>
+      <tr><td>Output</td><td>Free-form guidance</td><td>Goal, constraints, design, affected files, risks, sequence, acceptance, open questions, escalate</td></tr>
+      <tr><td>Model</td><td><code>gpt-5.6-sol</code>, high</td><td><code>gpt-5.6-terra</code>, high</td></tr>
+      <tr><td>Cap per branch</td><td>5</td><td>3</td></tr>
+      <tr><td>Called when</td><td>Stuck, risky, course correction; or if the architect escalates and you agree</td><td>On request, or before planning or implementing a change that adds a component, crosses a module boundary, changes an interface or data model, or touches more than about 3 files</td></tr>
+      <tr><td>Sees</td><td colspan="2">Question, the context main passes in, and the last 20,000 characters of the conversation. Neither can read files.</td></tr>
     </tbody>
   </table>
   </div>
-<pre>pi install git:github.com/earendil-works/pi-review
-pi install npm:@mjakl/pi-subagent</pre>
+  <p class="lede">Order when both are asked for: architect first, then advisor with the plan as context. The "when to call" rule lives only in the text <code>architect.ts</code> adds to the system prompt each turn, not in any <code>AGENTS.md</code>.</p>
 </section>
 
-<footer>Source: <code>svenhornaff/.pi</code> branch <code>p-mac</code> at <code>9ac6f5a</code>, read directly from the repository on 2026-09-27. Runtime state on the Mac (installed packages, Keychain entries, sessions) was not inspected.</footer>
+<section id="review">
+  <h2>Review and KPI rating</h2>
+  <p>Scored 1–10 against what a personal harness should do: stop damage, keep spend visible and bounded, produce good changes, and stay cheap to maintain. Weights sum to 100. Scores reflect the branch at <code>9ab7bd1</code>; nothing on the Mac itself was inspected.</p>
+  <figure>
+    <div class="svgbox">
+    <svg viewBox="0 0 760 470" role="img" aria-label="KPI scores out of 10: documentation 9, secrets 9, cost visibility 7, cost control 7, context economy 8, model strategy 8, design workflow 8, maintainability 8, guardrails 6, testing 6, portability 6. Weighted total 7.3.">
+      <g font-family="Instrument Sans, system-ui, sans-serif" font-size="12.5" fill="currentColor">
+        <g font-size="11" opacity=".6" text-anchor="middle">
+          <text x="250" y="18">0</text><text x="375" y="18">2.5</text><text x="500" y="18">5</text><text x="625" y="18">7.5</text><text x="750" y="18" text-anchor="end">10</text>
+        </g>
+        <g stroke="currentColor" stroke-opacity=".12">
+          <line x1="250" y1="26" x2="250" y2="440"/><line x1="375" y1="26" x2="375" y2="440"/><line x1="500" y1="26" x2="500" y2="440"/><line x1="625" y1="26" x2="625" y2="440"/><line x1="750" y1="26" x2="750" y2="440"/>
+        </g>
+        <!-- rows: y = 34 + i*37, bar height 22; width = score*50 -->
+        <text x="10" y="50">Documentation &amp; traceability</text><text x="238" y="50" text-anchor="end" opacity=".6">10</text><rect x="250" y="34" width="450" height="22" rx="3" fill="#2E7A4E"/><text x="706" y="50">9</text>
+        <text x="10" y="87">Secrets hygiene</text><text x="238" y="87" text-anchor="end" opacity=".6">10</text><rect x="250" y="71" width="450" height="22" rx="3" fill="#2E7A4E"/><text x="706" y="87">9</text>
+        <text x="10" y="124">Context economy</text><text x="238" y="124" text-anchor="end" opacity=".6">5</text><rect x="250" y="108" width="400" height="22" rx="3" fill="#2E7A4E"/><text x="656" y="124">8</text>
+        <text x="10" y="161">Model strategy</text><text x="238" y="161" text-anchor="end" opacity=".6">5</text><rect x="250" y="145" width="400" height="22" rx="3" fill="#2E7A4E"/><text x="656" y="161">8</text>
+        <text x="10" y="198">Design &amp; review workflow</text><text x="238" y="198" text-anchor="end" opacity=".6">10</text><rect x="250" y="182" width="400" height="22" rx="3" fill="#2E7A4E"/><text x="656" y="198">8</text>
+        <text x="10" y="235">Maintainability</text><text x="238" y="235" text-anchor="end" opacity=".6">5</text><rect x="250" y="219" width="400" height="22" rx="3" fill="#2E7A4E"/><text x="656" y="235">8</text>
+        <text x="10" y="272">Cost visibility</text><text x="238" y="272" text-anchor="end" opacity=".6">10</text><rect x="250" y="256" width="350" height="22" rx="3" fill="#0E6A86"/><text x="606" y="272">7</text>
+        <text x="10" y="309">Cost control</text><text x="238" y="309" text-anchor="end" opacity=".6">10</text><rect x="250" y="293" width="350" height="22" rx="3" fill="#0E6A86"/><text x="606" y="309">7</text>
+        <text x="10" y="346">Guardrails &amp; isolation</text><text x="238" y="346" text-anchor="end" opacity=".6">15</text><rect x="250" y="330" width="300" height="22" rx="3" fill="#A55A0B"/><text x="556" y="346">6</text>
+        <text x="10" y="383">Testing &amp; verification</text><text x="238" y="383" text-anchor="end" opacity=".6">15</text><rect x="250" y="367" width="300" height="22" rx="3" fill="#A55A0B"/><text x="556" y="383">6</text>
+        <text x="10" y="420">Portability &amp; operability</text><text x="238" y="420" text-anchor="end" opacity=".6">5</text><rect x="250" y="404" width="300" height="22" rx="3" fill="#A55A0B"/><text x="556" y="420">6</text>
+        <text x="238" y="462" text-anchor="end" font-size="11" opacity=".6">weight</text>
+        <text x="750" y="462" text-anchor="end" font-weight="600">Weighted total 7.3 / 10</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Green ≥ 8, blue 7, amber ≤ 6. Grey numbers left of each bar are the weights. Weighted total: (9·10 + 9·10 + 8·5 + 8·5 + 8·10 + 8·5 + 7·10 + 7·10 + 6·15 + 6·15 + 6·5) / 100 = 7.3.</figcaption>
+  </figure>
+
+  <div class="tbl">
+  <table>
+    <thead><tr><th>KPI</th><th>Score</th><th>Evidence</th><th>What caps it</th></tr></thead>
+    <tbody>
+      <tr><td>Documentation &amp; traceability</td><td>9</td><td>Append-only decision log with "ran X, got Y"; regenerated setup guide; concept + refactor docs; this page.</td><td>Five overlapping documents to keep in sync by hand.</td></tr>
+      <tr><td>Secrets hygiene</td><td>9</td><td>Keychain references only; <code>auth.json</code>, sessions and backups gitignored; protected-paths covers writes; pi-condense never summarises secrets.</td><td>Session transcripts on disk can still contain secrets read during a session.</td></tr>
+      <tr><td>Context economy</td><td>8</td><td>pi-condense with recoverable stubs, native compaction, cache-warm, spill-to-disk.</td><td>Advisor/architect guidance changes the system prompt when a count changes, costing one cache miss per call.</td></tr>
+      <tr><td>Model strategy</td><td>8</td><td>Cheap default, cross-family architect, strong advisor, cheap hosted summarizer.</td><td><code>llmhub/claude-opus-4.6</code> unconfirmed; 9 enabled models is more than the workflows use.</td></tr>
+      <tr><td>Design &amp; review workflow</td><td>8</td><td>architect → PLAN.md → Plannotator → advisor on escalation; pi-lens on every edit; B1–B4 behaviour checks passed.</td><td>No fresh-context review of the finished diff; review still happens in the implementing context.</td></tr>
+      <tr><td>Maintainability</td><td>8</td><td>Heavy subagent layer removed cleanly; architect is 189 lines, no new dependency.</td><td>Mechanism copied from advisor-pi, so upstream fixes there must be ported by hand.</td></tr>
+      <tr><td>Cost visibility</td><td>7</td><td>Live cost in the footer; <code>/session-stats</code> now shows advisor and architect.</td><td><code>session-usage-report.py</code> counts assistant turns only: advisor, architect, pi-condense and compaction spend are missing from the all-sessions view.</td></tr>
+      <tr><td>Cost control</td><td>7</td><td>Per-branch caps (5 / 3), SearXNG-first search, cheap summarizer.</td><td>LLMHub cache fix still not live-verified; smoke check A3 spends 3 real architect calls on every run.</td></tr>
+      <tr><td>Guardrails &amp; isolation</td><td>6</td><td>Two fail-closed hooks, smoke-tested including the bash-redirection bypass.</td><td>No sandbox. Advisor and architect add themselves back to the active tools on start, so <code>--tools</code> / <code>--no-tools</code> restrictions don't hold for them.</td></tr>
+      <tr><td>Testing &amp; verification</td><td>6</td><td>13-check smoke gate run on every extension change; behaviour checks logged.</td><td>Most checks depend on the model following instructions; one flaky red run already seen. No deterministic tests since the revert.</td></tr>
+      <tr><td>Portability &amp; operability</td><td>6</td><td>Setup steps in README; branch per machine.</td><td>Hardcoded <code>/Users/brooklyn</code> paths; SearXNG needs Docker; stale <code>lastChangelogVersion</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section id="actions">
+  <h2>Actions that prevent the known problems</h2>
+  <p>Ordered by what they protect. The first three are small code changes; hand them to the local agent together.</p>
+  <div class="card">
+    <div class="finding"><span class="pill p-bad">P1</span><div><b>Tool allowlists are overridden.</b> <code>architect.ts</code> re-adds itself to the active tools in <code>refresh()</code>, which runs on session start, every <code>before_agent_start</code> and every call. <code>advisor-pi</code> does the same on session start. A run started with <code>--tools read,grep</code> or <code>--no-tools</code> (smoke tests, a future child process) still gets both tools. <i>Prevent:</i> only remove the tool in <code>refresh()</code> when disabled; add it back only in <code>/architect enable</code>. Verify with <code>pi -p --tools read "list your tools"</code>. Report the advisor-pi behaviour upstream.</div></div>
+    <div class="finding"><span class="pill p-bad">P1</span><div><b>The smoke gate spends real model calls.</b> A3 makes three <code>gpt-5.6-terra</code> calls at high thinking to reach the cap, on every run of a gate meant to run after any extension edit. <i>Prevent:</i> read an env override such as <code>PI_ARCHITECT_MAX_USES</code> at load; A3 sets it to 0 and expects a refusal on the first call, with no model call.</div></div>
+    <div class="finding"><span class="pill p-warn">P2</span><div><b>All-sessions spend is undercounted.</b> <code>session-usage-report.py</code> reads assistant messages only. <i>Prevent:</i> apply the same rules as <code>session-stats.ts</code>: <code>toolResult</code> usage, <code>details.advisor/architect.usage</code>, compaction and branch-summary entries.</div></div>
+    <div class="finding"><span class="pill p-warn">P2</span><div><b>LLMHub cache fix unverified.</b> Config is right, but no live cache read has been seen since the €275 incident. <i>Prevent:</i> one short two-turn session on <code>llmhub/claude-sonnet-4.6</code> after the budget resets, then check <code>cacheRead &gt; 0</code> in <code>/session-stats</code>.</div></div>
+    <div class="finding"><span class="pill p-warn">P2</span><div><b>Flaky gate.</b> Model-dependent checks can fail for reasons unrelated to the change. <i>Prevent:</i> on a red run, re-run once; if it passes, log it as a flake with the case name. Two flakes on the same case means rewording that prompt.</div></div>
+    <div class="finding"><span class="pill p-warn">P2</span><div><b>No sandbox.</b> Guardrails are regex and substring checks; <code>pi-web-access</code> fetches any URL. <i>Prevent:</i> keep trusted projects free of untrusted input, or run such work in a container per pi's containerization guide.</div></div>
+    <div class="finding"><span class="pill p-info">P3</span><div><b>Cap behaviour untested in a real session.</b> The logged B5 checked <code>/session-stats</code>, not the cap. A3 covers the refusal, but not that main says so and carries on. Run once interactively.</div></div>
+    <div class="finding"><span class="pill p-info">P3</span><div><b>Fresh-context review of the finished diff.</b> Try <code>earendil-works/pi-review</code> for two weeks; keep it only if it finds something the in-session review missed.</div></div>
+    <div class="finding"><span class="pill p-info">P3</span><div><b>Small things.</b> <code>/architect thinking</code> rejects <code>max</code>, which pi supports; <code>lastChangelogVersion</code> still reads 0.85.1; <code>claude-opus-4.6</code> on LLMHub unconfirmed.</div></div>
+    <div class="finding"><span class="pill p-ok">done</span><div>Setup guide, decision-log status, README, diagram path and labels, advisor spend in <code>/session-stats</code>.</div></div>
+  </div>
+</section>
+
+<footer>Source: <code>svenhornaff/.pi</code> branch <code>p-mac</code> at <code>9ab7bd1</code>, read directly from the repository on 2026-09-27. Runtime state on the Mac (installed packages, Keychain entries, sessions) was not inspected.</footer>
 
 </div>
 
