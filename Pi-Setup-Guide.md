@@ -139,6 +139,7 @@ across all sessions, and the live cost in the `statusline-pi` footer.
 | `protected-paths.ts` | `tool_call` | Blocks writes to `.env*`, `.git/`, `.ssh/`, `.gnupg/`, `.npmrc`, token/secret/credential filenames and pi's own config files, via write/edit **and** via bash write destinations (`>`, `tee`, `sed -i`). Read-only mentions are allowed. |
 | `git-checkpoint.ts` | `turn_start`, `session_before_fork` | `git stash create` per turn when the tree is dirty; `/fork` can restore that state. No-ops outside git and on clean trees. |
 | `session-stats.ts` | `/session-stats` | Cost and tokens for the current session by provider/model, including compaction and tool-internal usage; zero-cache-read warning. Works in `-p` mode. |
+| `architect.ts` | `architect` tool, `/architect` | Second-model design-plan call (goal, constraints, design, affected files, risks, sequence, acceptance, open questions, escalation) for non-trivial changes; no tools, no file access. Autonomous like `advisor` (model decides when, guided by an injected system-prompt hint) as well as explicit via `/design`. Default `openai-codex/gpt-5.6-terra`, high thinking, capped at 3 uses/session-branch. `/architect [status\|enable\|disable\|model <p>/<id>\|thinking <level>\|max-uses <n>]`. See `docs/architect-concept.md` and `docs/architect-refactor.md`. |
 | `obsidian-sync.ts` | `/obsidian` | Syncs repository markdown into the Obsidian vault (§2). |
 | `session-name.ts` | `/session-name` | Human-readable session names for `/resume`. |
 | `tool-counter-widget.ts` | `/toolcount`, `/resetcount` | Per-session tool-call counts. |
@@ -204,6 +205,7 @@ Local SearXNG: `~/.pi/searxng/docker-compose.yml`, container `pi-searxng`, bound
 | Command | Purpose |
 |---|---|
 | `/high-stakes-web-research <topic>` | Full multi-provider research (§6). |
+| `/design <change request>` | Investigate, consult `architect` (and `advisor` if it escalates), write `PLAN.md`, open it in Plannotator, and wait for approval before implementing. |
 | `/standup` | Yesterday / Today / Blockers from recent git activity. |
 | `/changelog` | Changelog from git history. |
 

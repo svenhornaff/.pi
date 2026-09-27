@@ -1434,3 +1434,171 @@ before editing).
 
 **Leftovers outside git (owner's machine):** `~/.pi/agent/sessions/subagents/`,
 `~/pi-eval/`, any `/tmp/eval-*` worktrees. Delete or keep; none affect pi.
+
+---
+
+## Implementation log — 2026-09-27: `architect.ts` added (docs/architect-concept.md, docs/architect-refactor.md), §7/§11 fixes
+
+**Found (§10, before adding any dependency):**
+
+- `typebox` does not resolve from `agent/extensions/` via a plain `node -e
+  "require.resolve('typebox')"` (`MODULE_NOT_FOUND`) — same result today as
+  the concept doc's own note.
+- But `@earendil-works/pi-ai`'s `dist/index.d.ts` re-exports it as a *value*,
+  not just a type: `export { Type } from "typebox";` (line 1) — and `pi-ai`
+  is a dependency of the globally-installed `@earendil-works/pi-coding-agent`,
+  which is what pi's own extension loader resolves against, not
+  `agent/extensions/node_modules`. Existing extensions already rely on this
+  exact mechanism for runtime (not type-only) values: `theme-cycler.ts` and
+  `welcome-dashboard.ts` import `truncateToWidth` from `@earendil-works/pi-tui`
+  today with zero local `node_modules`.
+- Verified empirically, not just by static reasoning: wrote a throwaway
+  `agent/extensions/_tmp-typebox-probe.ts` importing `{ Type, type Static }
+  from "@earendil-works/pi-ai"`, building a real `Type.Object` schema and
+  registering a tool with it. Ran `pi -p --model
+  openrouter/anthropic/claude-sonnet-5 "reply ok"` → loaded clean, no
+  `MODULE_NOT_FOUND`. Ran a second `pi -p` asking the model to call the probe
+  tool → returned `ok:hello`, i.e. the tool executed for real. Also verified
+  `completeSimple` (`@earendil-works/pi-ai`) and `buildSessionContext` /
+  `convertToLlm` / `serializeConversation` (`@earendil-works/pi-coding-agent`)
+  the same way via `/runtime-probe` → `runtime-probe: ok=true textLen=0`.
+  Deleted both probe files immediately after.
+- **Conclusion: no dependency added.** `architect.ts` imports `Type` from
+  `@earendil-works/pi-ai` (not `"typebox"` directly, unlike advisor-pi, which
+  can use `"typebox"` because it's an installed npm package with its own
+  hoisted `node_modules/typebox` — a different resolution path than a global
+  `agent/extensions/*.ts` file has). No change to
+  `agent/extensions/package.json`.
+
+**Done:**
+
+- `agent/extensions/architect.ts` (189 lines, budget was ≤200): copies
+  advisor-pi's mechanism (one `completeSimple()` call, no tools, fixed system
+  prompt, capped transcript via `serializeConversation`, per-branch use
+  counter persisted with `pi.appendEntry` and restored on
+  `session_start`/`session_tree`) with a different job (structured design
+  plan: Goal/Constraints/Design/Affected files/Risks/Sequence/Acceptance/Open
+  questions/Escalate), model (`openai-codex/gpt-5.6-terra`, high thinking),
+  and cap (3/branch). Left out per the concept doc's explicit scope cut: CLI
+  flags, a cache-retention setting, a footer status line, legacy-model
+  migration — one command only (`/architect
+  status|enable|disable|model|thinking|max-uses`).
+- `/architect` command notifications go through a `notify()` helper with a
+  `console.log` fallback when `ctx.hasUI` is false — found this the hard way:
+  the first version used bare `ctx.ui.notify` (like advisor-pi's own
+  `/advisor-pi` command) and `pi -p --model ... "/architect status"` printed
+  *nothing* at all in `-p` mode. Fixed, then reran: `pi -p ... "/architect
+  status"` → `architect enabled • model: openai-codex/gpt-5.6-terra
+  (available) • thinking: high • uses: 0/3`.
+- `agent/prompts/design.md`: investigate → `architect` (≤1 follow-up) → write
+  `PLAN.md` → open in Plannotator → wait for approval → `advisor` only if the
+  plan says `Escalate: yes`.
+- Applied `docs/architect-refactor.md` R1 (tool `description`), R2 (autonomous
+  before_agent_start guidance, collapsed to just the first/last line at cap),
+  keeping §9's `/design` shortcut and no forcing hooks — main still decides.
+- §7: `session-stats.ts` now attributes `advisor`/`architect` tool-result
+  usage (`details.<toolName>.usage`, not `message.usage`) to `(advisor)` /
+  `(architect)` rows, only when `message.usage` is absent (no double-count if
+  either tool starts setting it directly), and excludes those rows from the
+  zero-cache-read flag (subscription-billed models legitimately read no
+  cache).
+- §11: `docs/p-mac-harness.html` — moved the "block + reason" label off the
+  `permission-gate` box (`x=372,y=136` → `x=330,y=108`, anchored `middle`);
+  rerouted the tool-result path to end at the pi-agent-loop box instead of
+  passing through `pi-condense` (`M750,272 L750,372 L275,372 L275,352` →
+  `M750,272 L750,396 L170,396 L170,205 L188,205`, routed left of the
+  `pi-condense` box, entering the loop at `y=205` instead of colliding with
+  the `y=188` "prompt" arrow); moved the `tool_result` pill's line to `y=396`
+  so the pill (`y=358–386`) floats above it instead of sitting on it.
+- `scripts/smoke-test-extensions.sh`: added A1 (tool present after load), A2
+  (`/architect disable` runs clean, no model call), A3 (4th call in one turn
+  refuses without a model call, default cap 3) — all scriptable in a single
+  `pi -p` invocation, unlike the disable→refusal chain across two invocations
+  (see below).
+- `README.md` extension table: added `architect.ts` row, extended the
+  `session-stats.ts` row for the `(advisor)`/`(architect)` breakout.
+  `Pi-Setup-Guide.md` §5: added `architect.ts` to the local-extensions table;
+  §7: added `/design` to the prompt-templates table.
+- Root `AGENTS.md` → Source layout: added an `architect.ts` bullet.
+
+**Verified:**
+
+- `python3 -c "import json; json.load(open('agent/settings.json'))"` and the
+  same for `agent/models.json`, `web-search.json` → no output, exit 0 (all
+  three parse; none of them changed content this pass, checked as required
+  by the PR checklist regardless).
+- `wc -l agent/extensions/architect.ts` → `189` (≤200).
+- `./scripts/smoke-test-extensions.sh` → `13 passed, 0 failed` (10 prior +
+  A1–A3), after confirming one earlier red run
+  (`blocks dangerous command (force push)`) was pre-existing LLM-response
+  flakiness unrelated to this change: `git stash` → reran the *old* script on
+  the unmodified tree → `10 passed, 0 failed`; `git stash pop`; reran the new
+  script again on the changed tree → `13 passed, 0 failed`.
+- Ran the actual A1–A3 commands directly (not just via the script) and read
+  the output: A1 tool-list reply included `architect`; A2 `/architect
+  disable` → `architect disabled`; A3 "call architect 4 times in a row" →
+  4th call returned `Architect use limit reached (3). Continue without
+  another call for: design change 4`.
+- Cross-process persistence (disable in one `pi -p` call, refuse in the
+  next): confirmed **not scriptable** in `-p` mode, and not an
+  `architect.ts` bug — `pi -p` only writes a session to disk once a real
+  model turn has happened in it. A command-only invocation (`pi -p
+  --session-id X "/architect disable"`) executes correctly (prints
+  `architect disabled`) but leaves *zero* files under `agent/sessions/`, so a
+  second `pi -p --session-id X ...` call reports "No project session found
+  ... creating a new session" and starts from defaults again. Reproduced the
+  same with `advisor-pi`'s own `/advisor-pi disable` (also writes nothing).
+  Confirmed the in-session mechanism itself works when a real turn forces a
+  save: `pi -p --session-id S "Run /architect disable, then reply done."`
+  (model can't actually invoke a slash command, so this doesn't disable
+  anything — expected) vs. calling the tool 4× in one turn (A3, works, no
+  cross-process save needed). Documented as a manual/non-scriptable case per
+  the concept doc's own §8 allowance, not fixed.
+- R2 wording (before_agent_start guidance), tested in the trusted
+  `bulliexplorer` project (clean tree beforehand, `git status --short` empty,
+  `git rev-parse HEAD` recorded):
+  - **B1** (explicit ask): "Let's consult the architect about adding CSV
+    export..." → investigated via `bash` (grep/read) first, called
+    `architect` exactly once, presented the plan, made no edits. `git status
+    --short` after → empty.
+  - **B2** (autonomous, first try — failed): "add a `/health` endpoint... 4
+    files... tell me your plan before touching anything" → model investigated
+    and wrote a plan but **never called `architect`**. Per the refactor doc's
+    own allowance ("If B2 fails, revise the R2 text once and re-run"),
+    reworded the second bullet from "before implementing a change that..." to
+    "before presenting a plan for, or implementing, a change that... This
+    applies even when the user only asked for a plan." Reran with a fresh
+    scenario ("add a `/metrics-lite` endpoint... tell me your plan before
+    touching anything") → model said "this is a small feature but does add a
+    new component..., let me get a quick architect design... before [writing
+    the plan]", then called `architect` before any edit/write, unprompted.
+    Confirmed via the session `.jsonl`: tool-call sequence ends
+    `...architect, bash` with zero `edit`/`write` calls.
+  - **B3** (restraint): a genuine single-file typo fix
+    (`sed -i` a real typo into `README.md`'s H1, asked for the fix) → tool
+    sequence `bash, edit`, no `architect` call. Reverted with `git checkout
+    -- README.md`; `git status --short` → empty after.
+  - **B4** (both, in order): "Ask the architect and the advisor about
+    switching the resync job to an async task queue... do not write files" →
+    tool sequence ends `...architect, advisor` (architect first); architect's
+    plan said `Escalate: yes`; advisor's reply explicitly built on the
+    architect's framing; no `edit`/`write` calls; `git status --short` after
+    → empty.
+  - **B5** (session-stats): same session as B4, `pi -p --session-id
+    b5-session-stats ... "/session-stats"` →
+    `(advisor)/gpt-5.6-sol` and `(architect)/gpt-5.6-terra` both appear as
+    separate rows with real token/cost figures (e.g.
+    `(architect)/gpt-5.6-terra   1   6,333   0   0   1,670   0.0327`),
+    confirming §7's session-stats fix attributes both tools' usage correctly
+    end to end, not just in isolation.
+- Public surface diff: added tool `architect`; added command `/architect`;
+  added prompt template `/design`; no tool/command/setting removed or
+  renamed. `README.md`, `Pi-Setup-Guide.md` §5/§7, and this entry updated
+  accordingly, per the checklist.
+
+**Open / not done this pass (see final checklist message to the user):**
+
+- `docs/architect-refactor.md` R5–R7 (README/setup-refactor-plan/AGENTS.md
+  entries) folded into this same log entry and the table edits above, rather
+  than as separate diffs — treated as satisfied, not separately tracked.
+- Stopped after the concept doc's §9 "Done when" as instructed; did not push.

@@ -33,6 +33,14 @@
  *     calls -- distinct from the assistant's own usage, and easy to miss)
  *   - compaction entries (usage from generating the compaction summary)
  *   - branch_summary entries (usage from generating a branch summary)
+ *   - toolResult messages from `advisor` / `architect`: those tools report
+ *     usage in `details.<toolName>.usage` (model + provider from
+ *     `details.<toolName>.model`/`.provider`), not on `message.usage` --
+ *     without this branch that spend is invisible here even though it is
+ *     real, separately-billed model usage. Bucketed as `(advisor)` /
+ *     `(architect)` so it's obviously distinct from a real provider. Only
+ *     used when `message.usage` is absent, so a future version of either
+ *     tool that also sets `message.usage` directly is not double-counted.
  * This matches the full session-cost accounting described in
  * docs/session-format.md, not just the visible assistant turns.
  */
@@ -130,6 +138,15 @@ function computeSessionStats(ctx: ExtensionContext): { byModel: ModelTotals[]; g
 				usage = msg.usage;
 				provider = msg.provider ?? "unknown";
 				model = msg.model ?? "unknown";
+			} else if (msg.role === "toolResult" && (msg.toolName === "advisor" || msg.toolName === "architect") && !msg.usage && msg.details?.[msg.toolName]?.usage) {
+				// advisor / architect report usage under details.<toolName>.usage,
+				// not message.usage -- see file header. Bucketed as (advisor) /
+				// (architect) rather than (tool-internal) so this billed model
+				// spend reads distinctly from ordinary tool execution.
+				const toolDetails = msg.details[msg.toolName];
+				usage = toolDetails.usage;
+				provider = `(${msg.toolName})`;
+				model = toolDetails.model ?? "unknown";
 			} else if (msg.role === "toolResult" && msg.usage) {
 				// Nested LLM work performed by a tool (e.g. pi-condense's own
 				// summarizer calls). Not attributable to a provider/model field
@@ -204,7 +221,7 @@ function formatReport(ctx: ExtensionContext): string {
 	lines.push(`  TOTAL:      ${fmtCost(grand.costTotal)}`);
 
 	// Zero-cache flag -- same heuristic as ~/.pi/scripts/session-usage-report.py.
-	const flagged = byModel.filter((t) => t.input + t.cacheRead >= 50_000 && t.cacheRead === 0 && t.provider !== "(tool-internal)" && t.provider !== "(compaction)" && t.provider !== "(branch-summary)");
+	const flagged = byModel.filter((t) => t.input + t.cacheRead >= 50_000 && t.cacheRead === 0 && t.provider !== "(tool-internal)" && t.provider !== "(compaction)" && t.provider !== "(branch-summary)" && t.provider !== "(advisor)" && t.provider !== "(architect)");
 	if (flagged.length > 0) {
 		lines.push("");
 		lines.push("⚠️  Zero cacheRead despite significant input tokens -- check compat.cacheControlFormat for:");

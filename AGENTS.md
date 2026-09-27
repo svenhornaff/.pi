@@ -84,6 +84,20 @@ python3 -c "import json; json.load(open('web-search.json'))"
   cost/tokens for the current session, fresh-vs-cached input split,
   zero-cache-read warning. Must work in `-p`/non-TUI mode (`ctx.hasUI`
   false) via a `console.log` fallback, not only `ctx.ui.notify`.
+- `agent/extensions/architect.ts` — `architect` tool + `/architect`: a second,
+  higher-capability model turns evidence the executor gathered into a
+  structured design plan (goal/constraints/design/affected files/risks/
+  sequence/acceptance/open questions/escalation); no tools, no file access.
+  Same mechanism as `advisor-pi` (one `completeSimple()` call, capped
+  transcript, per-branch use cap persisted via `pi.appendEntry`), copied not
+  imported, since it's a different job/model/cap. Autonomous like `advisor`
+  via an injected `before_agent_start` hint, plus an explicit `/design`
+  prompt (`agent/prompts/design.md`). Default `openai-codex/gpt-5.6-terra`,
+  high thinking, capped at 3 uses/session-branch. See
+  `docs/architect-concept.md` and `docs/architect-refactor.md`. Uses
+  `Type`/`Static` re-exported from `@earendil-works/pi-ai` rather than a
+  direct `"typebox"` import — `agent/extensions/*.ts` has no local
+  `node_modules` for advisor-pi's own installed-package resolution path.
 - `agent/extensions/obsidian-sync.ts`,
   `tool-counter-widget.ts`, `theme-cycler.ts`, `themeMap.ts`,
   `welcome-dashboard.ts`, `session-name.ts` — TUI/workflow ergonomics.

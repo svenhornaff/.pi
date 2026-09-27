@@ -22,6 +22,16 @@
 #      work in this session multiple times — see setup-refactor-plan.md)
 #   7. git-checkpoint.ts doesn't error/hang in a clean git repo
 #   8. git-checkpoint.ts doesn't error/hang in a non-git directory
+#  A1. architect.ts loads with no errors; the architect tool is present
+#  A2. /architect disable runs cleanly with no model call (pure local
+#      command -- the full disable -> tool-refusal chain across two
+#      separate `pi -p` invocations is a manual check, not scripted here:
+#      `pi -p` only persists a session to disk once a real model turn has
+#      happened in it, so a command-only first call leaves nothing for a
+#      second `--session-id` call to resume -- see setup-refactor-plan.md)
+#  A3. architect's per-branch use cap (default 3) refuses a 4th call in
+#      the same turn without a model call -- scriptable in one `pi -p`
+#      invocation, unlike A2
 #
 # Usage:
 #   ~/.pi/scripts/smoke-test-extensions.sh
@@ -143,6 +153,24 @@ echo "-- 4. git-checkpoint.ts --"
 	check "no error in non-git dir" \
 		"^data$" \
 		pi -p --model "$MODEL" "read x.txt and reply with its content"
+)
+echo
+
+echo "-- 5. architect.ts (A1-A3) --"
+(
+	cd "$GITDIR" || exit 1
+
+	check "A1: architect tool is present after load" \
+		"architect" \
+		pi -p --model "$MODEL" "List the exact names of every tool you currently have available, one per line, nothing else."
+
+	check "A2: /architect disable runs cleanly, no model call" \
+		"^architect disabled$" \
+		pi -p --model "$MODEL" "/architect disable"
+
+	check "A3: 4th architect call in one turn refuses without a model call (max-uses 3 default)" \
+		"[Uu]se limit reached" \
+		pi -p --model "$MODEL" "Call the architect tool exactly 4 times in a row, each with a different trivial question like 'design change N'. Report exactly the content text returned by the 4th call, verbatim, nothing else."
 )
 echo
 
