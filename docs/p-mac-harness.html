@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>p-mac Pi Harness</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F3F6F7; --panel:#FFFFFF; --ink:#16212B; --muted:#586674; --line:#D3DBE1; --soft:#E8EEF1;
+  --accent:#0E6A86; --accent-soft:#DCEEF3; --ok:#2E7A4E; --ok-soft:#E0F1E7; --warn:#A55A0B; --warn-soft:#FBEBD8; --bad:#B03A2E; --bad-soft:#F8E1DE;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --ground:#0E151B; --panel:#151F27; --ink:#E3EAEF; --muted:#98A7B4; --line:#2A3943; --soft:#1B2831;
+    --accent:#5DB8D4; --accent-soft:#16323D; --ok:#6CC592; --ok-soft:#173026; --warn:#E6A45A; --warn-soft:#352513; --bad:#EE8577; --bad-soft:#3A1D1A;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#0E151B; --panel:#151F27; --ink:#E3EAEF; --muted:#98A7B4; --line:#2A3943; --soft:#1B2831;
+  --accent:#5DB8D4; --accent-soft:#16323D; --ok:#6CC592; --ok-soft:#173026; --warn:#E6A45A; --warn-soft:#352513; --bad:#EE8577; --bad-soft:#3A1D1A;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font:15px/1.6 var(--body);margin:0}
+.wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:40px 64px;display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:clamp(30px,5vw,44px);font-weight:700;letter-spacing:-.01em}
+h2{font-size:24px;font-weight:700}
+h3{font-size:16px;font-weight:600;font-family:var(--body)}
+p{margin:0;max-width:68ch}
+code,.mono{font-family:var(--mono);font-size:.86em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font:500 12px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:14px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font:13px/1.4 var(--mono);color:var(--muted)}
+.meta b{color:var(--ink);font-weight:500}
+section{display:flex;flex-direction:column;gap:16px}
+.lede{color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.fact{background:var(--panel);padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.fact .v{font:600 22px/1.1 var(--display);font-variant-numeric:tabular-nums}
+.fact .k{font-size:12.5px;color:var(--muted)}
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.svgbox{overflow-x:auto}
+.svgbox svg{display:block;width:100%;min-width:720px;height:auto;color:var(--ink)}
+figcaption{font-size:13.5px;color:var(--muted);max-width:80ch}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 11.5px/1.3 var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td code{white-space:nowrap}
+.pill{display:inline-block;font:500 11.5px/1 var(--mono);padding:4px 7px;border-radius:99px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-warn{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-info{background:var(--accent-soft);color:var(--accent)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+pre{margin:0;background:var(--soft);border-radius:6px;padding:12px 14px;overflow-x:auto;font:13px/1.55 var(--mono)}
+.tree{font:13px/1.6 var(--mono);white-space:pre;overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px}
+.tree .c{color:var(--muted)}
+.timeline{display:flex;flex-direction:column;border-left:2px solid var(--line);margin-left:6px}
+.ev{display:grid;grid-template-columns:96px 1fr;gap:12px;padding:6px 0 6px 16px;position:relative;font-size:14px}
+.ev::before{content:"";position:absolute;left:-7px;top:13px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--muted)}
+.ev.hl::before{border-color:var(--accent);background:var(--accent)}
+.ev.rv::before{border-color:var(--warn)}
+.ev time{font:12.5px/1.8 var(--mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.ev .h{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.finding{display:grid;grid-template-columns:92px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.finding:last-child{border-bottom:0}
+footer{font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:560px){.ev{grid-template-columns:1fr;gap:0}.finding{grid-template-columns:1fr;gap:6px}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">svenhornaff/.pi · branch p-mac · ~/.pi on the private MacBook</span>
+  <h1>p-mac Pi Harness</h1>
+  <p class="lede">As-is documentation of the global pi configuration that every project on this machine inherits: models, guardrails, context and cost controls, web search, maintenance scripts, and the repo's own history. Generated from the pushed branch, not from memory.</p>
+  <div class="meta">
+    <span>HEAD <b>9ac6f5a</b></span>
+    <span>file tree = <b>3f49563</b> (2026-09-07)</span>
+    <span>pi installed <b>0.87.1</b></span>
+    <span>documented <b>2026-09-27</b></span>
+  </div>
+</header>
+
+<section>
+  <h2>At a glance</h2>
+  <div class="facts">
+    <div class="fact"><span class="v">sonnet-5</span><span class="k">default model, via OpenRouter, thinking medium</span></div>
+    <div class="fact"><span class="v">9</span><span class="k">enabled models across 4 providers</span></div>
+    <div class="fact"><span class="v">8</span><span class="k">npm packages loaded globally</span></div>
+    <div class="fact"><span class="v">9 + 1</span><span class="k">local extensions + shared themeMap helper</span></div>
+    <div class="fact"><span class="v">3</span><span class="k">trusted projects in <code>trust.json</code></span></div>
+    <div class="fact"><span class="v">10</span><span class="k">smoke-test checks, the "done" gate for extensions</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>How a turn runs</h2>
+  <p>Every tool call the model makes passes two local hooks before it executes. There is no sandbox underneath: these hooks are the only isolation layer in front of the trusted projects, which is why the repo treats them as untouchable without a matching smoke test.</p>
+  <figure>
+    <div class="svgbox">
+    <svg viewBox="0 0 860 400" role="img" aria-label="A prompt enters the pi agent loop; each tool call passes permission-gate and protected-paths before reaching the tools; results flow back through pi-lens diagnostics; git-checkpoint snapshots on turn start and pi-condense prunes finished tool batches.">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+        <marker id="ahw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#D14B3D"/></marker>
+      </defs>
+      <g font-family="Instrument Sans, system-ui, sans-serif" font-size="12.5" fill="currentColor">
+        <!-- user -->
+        <rect x="20" y="160" width="110" height="56" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="75" y="184" text-anchor="middle" font-weight="600">You</text>
+        <text x="75" y="201" text-anchor="middle" font-size="11" opacity=".7">TUI · /commands</text>
+
+        <!-- loop -->
+        <rect x="190" y="150" width="170" height="76" rx="6" fill="#0E6A86" fill-opacity=".12" stroke="#0E6A86" stroke-width="1.5"/>
+        <text x="275" y="178" text-anchor="middle" font-weight="600">pi agent loop</text>
+        <text x="275" y="196" text-anchor="middle" font-size="11" opacity=".75">sonnet-5 · medium</text>
+        <text x="275" y="212" text-anchor="middle" font-size="11" opacity=".75">compaction @ 16k reserve</text>
+
+        <!-- checkpoint -->
+        <rect x="190" y="40" width="170" height="50" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="275" y="61" text-anchor="middle" font-weight="600">git-checkpoint</text>
+        <text x="275" y="78" text-anchor="middle" font-size="11" opacity=".7">stash create if tree dirty</text>
+        <line x1="275" y1="90" x2="275" y2="148" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah)"/>
+        <text x="283" y="124" font-size="11" opacity=".75">turn_start</text>
+
+        <!-- condense -->
+        <rect x="190" y="300" width="170" height="50" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5" stroke-dasharray="4 3"/>
+        <text x="275" y="321" text-anchor="middle" font-weight="600">pi-condense</text>
+        <text x="275" y="338" text-anchor="middle" font-size="11" opacity=".7">prunes finished tool batches</text>
+        <line x1="275" y1="298" x2="275" y2="228" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah)"/>
+        <text x="283" y="268" font-size="11" opacity=".75">summaries, recoverable</text>
+
+        <!-- user to loop -->
+        <line x1="130" y1="188" x2="188" y2="188" stroke="currentColor" stroke-opacity=".7" marker-end="url(#ah)"/>
+        <text x="159" y="180" text-anchor="middle" font-size="11" opacity=".75">prompt</text>
+
+        <!-- guard group -->
+        <rect x="415" y="80" width="190" height="216" rx="8" fill="none" stroke="#D14B3D" stroke-opacity=".55" stroke-dasharray="5 4"/>
+        <text x="510" y="100" text-anchor="middle" font-size="11" font-family="JetBrains Mono, monospace" fill="#D14B3D">tool_call hooks</text>
+        <rect x="430" y="112" width="160" height="66" rx="6" fill="#D14B3D" fill-opacity=".08" stroke="#D14B3D" stroke-opacity=".7"/>
+        <text x="510" y="134" text-anchor="middle" font-weight="600">permission-gate</text>
+        <text x="510" y="151" text-anchor="middle" font-size="11" opacity=".75">bash: rm -rf, push, curl,</text>
+        <text x="510" y="166" text-anchor="middle" font-size="11" opacity=".75">keychain, global installs…</text>
+        <rect x="430" y="196" width="160" height="84" rx="6" fill="#D14B3D" fill-opacity=".08" stroke="#D14B3D" stroke-opacity=".7"/>
+        <text x="510" y="218" text-anchor="middle" font-weight="600">protected-paths</text>
+        <text x="510" y="235" text-anchor="middle" font-size="11" opacity=".75">write/edit and bash writes to</text>
+        <text x="510" y="250" text-anchor="middle" font-size="11" opacity=".75">.env* · .ssh · .gnupg · .git/</text>
+        <text x="510" y="265" text-anchor="middle" font-size="11" opacity=".75">pi's own config files</text>
+
+        <line x1="360" y1="188" x2="413" y2="188" stroke="currentColor" stroke-opacity=".7" marker-end="url(#ah)"/>
+        <text x="386" y="180" text-anchor="middle" font-size="11" opacity=".75">tool_call</text>
+
+        <!-- blocked back -->
+        <path d="M430,140 C395,140 380,165 362,170" fill="none" stroke="#D14B3D" stroke-width="1.3" marker-end="url(#ahw)"/>
+        <text x="372" y="136" font-size="11" fill="#D14B3D">block + reason</text>
+
+        <!-- tools -->
+        <text x="740" y="46" text-anchor="middle" font-size="11" font-family="JetBrains Mono, monospace" opacity=".7">tools</text>
+        <rect x="660" y="56" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="750" y="76" text-anchor="middle" font-weight="600">read · bash · edit · write</text>
+        <text x="750" y="92" text-anchor="middle" font-size="11" opacity=".7">built-ins</text>
+        <rect x="660" y="112" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="750" y="132" text-anchor="middle" font-weight="600">web_search · fetch_content</text>
+        <text x="750" y="148" text-anchor="middle" font-size="11" opacity=".7">pi-web-access</text>
+        <rect x="660" y="168" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="750" y="188" text-anchor="middle" font-weight="600">advisor</text>
+        <text x="750" y="204" text-anchor="middle" font-size="11" opacity=".7">gpt-5.6-sol · max 5 / branch</text>
+        <rect x="660" y="224" width="180" height="46" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/>
+        <text x="750" y="244" text-anchor="middle" font-weight="600">ask_user_question</text>
+        <text x="750" y="260" text-anchor="middle" font-size="11" opacity=".7">rpiv-ask-user-question</text>
+
+        <line x1="605" y1="188" x2="656" y2="188" stroke="currentColor" stroke-opacity=".7" marker-end="url(#ah)"/>
+        <text x="630" y="180" text-anchor="middle" font-size="11" opacity=".75">allowed</text>
+
+        <!-- result path -->
+        <path d="M750,272 L750,372 L275,372 L275,352" fill="none" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah)"/>
+        <rect x="455" y="358" width="200" height="28" rx="14" fill="#0E6A86" fill-opacity=".14" stroke="#0E6A86" stroke-opacity=".6"/>
+        <text x="555" y="377" text-anchor="middle" font-size="11.5">tool_result · pi-lens on write/edit</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>One turn. Red is the only enforcement point: <code>permission-gate</code> asks you (or blocks outright in <code>pi -p</code>, where there is no UI), <code>protected-paths</code> blocks without asking. Results return through <code>pi-lens</code> diagnostics; long sessions stay affordable through <code>pi-condense</code> and native compaction.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Models, credentials and billing</h2>
+  <p>No config file holds a raw key. Metered providers resolve their key from the macOS Keychain at call time; Codex runs on an OAuth subscription; Ollama is local and free.</p>
+  <figure>
+    <div class="svgbox">
+    <svg viewBox="0 0 860 300" role="img" aria-label="settings.json enabledModels route to four providers: OpenRouter and LLMHub use Keychain keys and bill per token, OpenAI Codex uses OAuth in auth.json on a subscription, Ollama runs on localhost for free.">
+      <defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-family="Instrument Sans, system-ui, sans-serif" font-size="12.5" fill="currentColor">
+        <rect x="20" y="110" width="150" height="80" rx="6" fill="#0E6A86" fill-opacity=".12" stroke="#0E6A86" stroke-width="1.5"/>
+        <text x="95" y="138" text-anchor="middle" font-weight="600">settings.json</text>
+        <text x="95" y="155" text-anchor="middle" font-size="11" opacity=".75">enabledModels (9)</text>
+        <text x="95" y="171" text-anchor="middle" font-size="11" opacity=".75">+ models.json</text>
+
+        <g>
+          <rect x="300" y="20" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-opacity=".55"/>
+          <text x="410" y="42" text-anchor="middle" font-weight="600">openrouter</text>
+          <text x="410" y="59" text-anchor="middle" font-size="11" opacity=".7">sonnet-5 · glm-5.3 · kimi-k3 · deepseek-v4-pro</text>
+          <rect x="300" y="88" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-opacity=".55"/>
+          <text x="410" y="110" text-anchor="middle" font-weight="600">openai-codex</text>
+          <text x="410" y="127" text-anchor="middle" font-size="11" opacity=".7">gpt-5.6 luna · terra · sol</text>
+          <rect x="300" y="156" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-opacity=".55"/>
+          <text x="410" y="178" text-anchor="middle" font-weight="600">llmhub (T-Systems)</text>
+          <text x="410" y="195" text-anchor="middle" font-size="11" opacity=".7">claude-sonnet-4.6 · cache flag set</text>
+          <rect x="300" y="224" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-opacity=".55"/>
+          <text x="410" y="246" text-anchor="middle" font-weight="600">ollama</text>
+          <text x="410" y="263" text-anchor="middle" font-size="11" opacity=".7">qwen3:4b-instruct · localhost:11434</text>
+        </g>
+        <path d="M170,150 C235,150 240,46 298,46" fill="none" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah2)"/>
+        <path d="M170,150 C235,150 240,114 298,114" fill="none" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah2)"/>
+        <path d="M170,150 C235,150 240,182 298,182" fill="none" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah2)"/>
+        <path d="M170,150 C235,150 240,250 298,250" fill="none" stroke="currentColor" stroke-opacity=".6" marker-end="url(#ah2)"/>
+
+        <g font-size="11.5">
+          <line x1="520" y1="46" x2="628" y2="46" stroke="currentColor" stroke-opacity=".5" marker-end="url(#ah2)"/>
+          <text x="574" y="39" text-anchor="middle" opacity=".75">per token</text>
+          <rect x="630" y="28" width="210" height="36" rx="18" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="735" y="51" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">Keychain openrouter-api-key</text>
+
+          <line x1="520" y1="114" x2="628" y2="114" stroke="currentColor" stroke-opacity=".5" marker-end="url(#ah2)"/>
+          <text x="574" y="107" text-anchor="middle" opacity=".75">subscription</text>
+          <rect x="630" y="96" width="210" height="36" rx="18" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="735" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">OAuth in auth.json (gitignored)</text>
+
+          <line x1="520" y1="182" x2="628" y2="182" stroke="#A55A0B" stroke-opacity=".9" marker-end="url(#ah2)"/>
+          <text x="574" y="175" text-anchor="middle" fill="#A55A0B">per token</text>
+          <rect x="630" y="164" width="210" height="36" rx="18" fill="#A55A0B" fill-opacity=".1" stroke="#A55A0B" stroke-opacity=".7"/>
+          <text x="735" y="187" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">Keychain llmhub</text>
+
+          <line x1="520" y1="250" x2="628" y2="250" stroke="currentColor" stroke-opacity=".5" marker-end="url(#ah2)"/>
+          <text x="574" y="243" text-anchor="middle" opacity=".75">free, local</text>
+          <rect x="630" y="232" width="210" height="36" rx="18" fill="none" stroke="currentColor" stroke-opacity=".45"/>
+          <text x="735" y="255" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11">no secret</text>
+        </g>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Amber marks the provider behind the €275 uncached-session incident. Its Claude entries now carry <code>compat.cacheControlFormat: "anthropic"</code>; live end-to-end cache verification is still outstanding.</figcaption>
+  </figure>
+
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Model</th><th>Provider</th><th>Role in this setup</th></tr></thead>
+    <tbody>
+      <tr><td><code>anthropic/claude-sonnet-5</code></td><td>openrouter</td><td>Default. Chosen as a cost/capability balance, not the strongest option.</td></tr>
+      <tr><td><code>gpt-5.6-sol</code></td><td>openai-codex</td><td>Advisor model (high thinking, capped at 5 calls per session branch).</td></tr>
+      <tr><td><code>gpt-5.6-luna</code>, <code>-terra</code></td><td>openai-codex</td><td>Available for manual switching.</td></tr>
+      <tr><td><code>glm-5.3</code>, <code>kimi-k3</code>, <code>deepseek-v4-pro</code></td><td>openrouter</td><td>Cheaper alternatives for manual switching.</td></tr>
+      <tr><td><code>openai/gpt-4.1-mini</code></td><td>openrouter</td><td>pi-condense summarizer. Not in <code>enabledModels</code>; set in <code>contextPrune</code>. Replaced a local Ollama summarizer that was flaky under load.</td></tr>
+      <tr><td><code>claude-sonnet-4.6</code></td><td>llmhub</td><td>Enabled; cache flag and real pricing configured.</td></tr>
+      <tr><td><code>qwen3:4b-instruct</code></td><td>ollama</td><td>Local, zero cost.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>Extensions</h2>
+  <h3>Local files in <code>agent/extensions/</code></h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>File</th><th>Hooks / surface</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>permission-gate.ts</code></td><td><code>tool_call</code></td><td>Regex check on bash: destructive fs ops, <code>sudo</code>, DROP/TRUNCATE, curl-into-shell, ssh/scp/rsync, <code>git push</code>, <code>gh pr merge</code>, releases, <code>npm publish</code>, global installs, Docker home mounts, Keychain / 1Password / cloud-auth reads. Asks in the TUI; blocks outright without UI.</td></tr>
+      <tr><td><code>protected-paths.ts</code></td><td><code>tool_call</code></td><td>Blocks writes to secrets and pi's own config via write/edit and via bash write destinations (<code>&gt;</code>, <code>tee</code>, <code>sed -i</code>). Read-only commands that merely mention a path are allowed.</td></tr>
+      <tr><td><code>git-checkpoint.ts</code></td><td><code>turn_start</code>, <code>session_before_fork</code></td><td><code>git stash create</code> per turn when the tree is dirty; <code>/fork</code> offers to restore code to that point. No-ops outside git.</td></tr>
+      <tr><td><code>session-stats.ts</code></td><td><code>/session-stats</code></td><td>Session cost by model: fresh vs cached input, cache writes, output, compaction and tool-internal usage. Warns on zero cache reads.</td></tr>
+      <tr><td><code>obsidian-sync.ts</code></td><td><code>/obsidian</code></td><td>Syncs project markdown into an Obsidian vault (<code>settings.json → obsidian</code>).</td></tr>
+      <tr><td><code>session-name.ts</code></td><td><code>/session-name</code></td><td>Human-readable names in <code>/resume</code>.</td></tr>
+      <tr><td><code>tool-counter-widget.ts</code></td><td><code>/toolcount</code>, <code>/resetcount</code></td><td>Tool-call counter.</td></tr>
+      <tr><td><code>theme-cycler.ts</code> + <code>themeMap.ts</code></td><td><code>/theme</code>, Ctrl+Shift+T/Q</td><td>Cycles the 11 bundled themes; themeMap is a shared helper.</td></tr>
+      <tr><td><code>welcome-dashboard.ts</code></td><td><code>/welcome</code></td><td>Startup dashboard; resolves pi version via <code>pi --version</code>.</td></tr>
+      <tr><td><code>status-footer.ts.disabled-…</code></td><td>none</td><td>Retired 2026-08-29 in favour of <code>statusline-pi</code>. Kept for reference.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>npm packages (<code>settings.json → packages</code>)</h3>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Package</th><th>Purpose</th><th>Cost note</th></tr></thead>
+    <tbody>
+      <tr><td><code>pi-web-access</code></td><td>web_search, fetch_content, source_check tools</td><td>Search APIs per call; SearXNG first</td></tr>
+      <tr><td><code>pi-condense@2.9.1</code></td><td>Recoverable pruning of finished tool batches (<code>contextPrune</code>)</td><td>Summarizer calls, cheap model</td></tr>
+      <tr><td><code>cache-warm</code></td><td>Keep-alive pings before cache TTL expiry; ≤12/h, stops after 30 min idle</td><td>Tiny pings</td></tr>
+      <tr><td><code>pi-lens</code></td><td>LSP, lint, type and ast-grep checks on every write/edit</td><td>Local only</td></tr>
+      <tr><td><code>@juicesharp/rpiv-ask-user-question</code></td><td>Structured multiple-choice questions instead of guessing</td><td>None</td></tr>
+      <tr><td><code>statusline-pi</code></td><td>Footer: dir, branch, PR, live cost, CPU/MEM, context zone, tokens/s</td><td>None</td></tr>
+      <tr><td><code>@plannotator/pi-extension</code></td><td>Browser-based plan and diff annotation before implementation</td><td>None</td></tr>
+      <tr><td><code>advisor-pi</code></td><td>Second opinion from gpt-5.6-sol at high thinking</td><td><span class="pill p-warn">billed separately · cap 5</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="lede">Footer budget: 3 permanent lines (statusline-pi, cache-warm, advisor-pi) after the 2026-08-29 declutter, down from 8 lines across 6 extensions.</p>
+</section>
+
+<section>
+  <h2>Context and cost controls</h2>
+  <div class="two">
+    <div class="card">
+      <h3>Native compaction</h3>
+      <ul>
+        <li><code>reserveTokens</code> 16,384 · <code>keepRecentTokens</code> 20,000</li>
+        <li><code>showCacheMissNotices</code> on</li>
+        <li>Retry: 3 attempts, 2 s base delay; provider retries 0, max delay 60 s</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>pi-condense (<code>contextPrune</code>)</h3>
+      <ul>
+        <li>Prunes on agent message, batched per turn, min 1,000 chars</li>
+        <li>Chain compression over a rolling window of 3; error purging after 2 turns</li>
+        <li>Dedup by content hash; spill to disk above 64 KB</li>
+        <li>Never prunes <code>.env*</code>, <code>auth.json</code>, <code>.ssh</code>, <code>.gnupg</code>, <code>node_modules</code>, <code>.git</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Prompt caching</h3>
+      <ul>
+        <li>LLMHub Claude models need <code>cacheControlFormat: "anthropic"</code>, or every token bills at full price</li>
+        <li><code>cache-warm</code> prevents cold-cache misses after idle gaps</li>
+        <li>Root cause and numbers: <code>prompt-cache-analysis.md</code></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Visibility</h3>
+      <ul>
+        <li><code>/session-stats</code>: current session</li>
+        <li><code>scripts/session-usage-report.py</code>: all sessions, flags zero-cache-read sessions</li>
+        <li>statusline-pi shows live cost</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Web search</h2>
+  <p>Everyday lookups go through a cheap, sequential route with a local metasearch engine first. The multi-provider fan-out is reserved for decisions that matter and runs only through the <code>/high-stakes-web-research</code> template.</p>
+  <figure>
+    <div class="svgbox">
+    <svg viewBox="0 0 860 150" role="img" aria-label="web_search tries SearXNG on localhost first, then falls back in order to Exa, OpenAI, Brave and Tavily on unsupported, transient, quota, network or invalid-response errors.">
+      <defs><marker id="ah3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>
+      <g font-family="Instrument Sans, system-ui, sans-serif" font-size="12.5" fill="currentColor">
+        <rect x="20" y="40" width="120" height="50" rx="6" fill="none" stroke="currentColor" stroke-opacity=".55"/>
+        <text x="80" y="70" text-anchor="middle" font-weight="600">web_search</text>
+        <rect x="190" y="30" width="160" height="70" rx="6" fill="#0E6A86" fill-opacity=".12" stroke="#0E6A86" stroke-width="1.5"/>
+        <text x="270" y="56" text-anchor="middle" font-weight="600">SearXNG</text>
+        <text x="270" y="73" text-anchor="middle" font-size="11" font-family="JetBrains Mono, monospace">127.0.0.1:8888</text>
+        <text x="270" y="89" text-anchor="middle" font-size="11" opacity=".7">Docker, local</text>
+        <line x1="140" y1="65" x2="188" y2="65" stroke="currentColor" stroke-opacity=".7" marker-end="url(#ah3)"/>
+        <g>
+          <rect x="420" y="45" width="80" height="40" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/><text x="460" y="70" text-anchor="middle">Exa</text>
+          <rect x="530" y="45" width="80" height="40" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/><text x="570" y="70" text-anchor="middle">OpenAI</text>
+          <rect x="640" y="45" width="80" height="40" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/><text x="680" y="70" text-anchor="middle">Brave</text>
+          <rect x="750" y="45" width="80" height="40" rx="6" fill="none" stroke="currentColor" stroke-opacity=".5"/><text x="790" y="70" text-anchor="middle">Tavily</text>
+          <line x1="350" y1="65" x2="418" y2="65" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+          <line x1="500" y1="65" x2="528" y2="65" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+          <line x1="610" y1="65" x2="638" y2="65" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+          <line x1="720" y1="65" x2="748" y2="65" stroke="currentColor" stroke-opacity=".6" stroke-dasharray="4 3" marker-end="url(#ah3)"/>
+        </g>
+        <text x="625" y="118" text-anchor="middle" font-size="11" opacity=".75">fallback only on: unsupported · transient · quota · network · invalid-response</text>
+        <text x="625" y="135" text-anchor="middle" font-size="11" opacity=".75">API keys from Keychain: exa-api-key · brave-api-key · tavily-api-key</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Default routing from <code>web-search.json</code>. The SSRF allow-list admits only <code>127.0.0.1/32</code>, which is what lets the tool reach the local SearXNG container.</figcaption>
+  </figure>
+</section>
+
+<section>
+  <h2>Prompt templates</h2>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Command</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>/high-stakes-web-research &lt;topic&gt;</code></td><td>2–4 varied queries across all five providers in parallel, full content, summary-review workflow. For architecture choices, security claims, pricing, dependencies.</td></tr>
+      <tr><td><code>/standup</code></td><td>Yesterday / Today / Blockers from recent git activity.</td></tr>
+      <tr><td><code>/changelog</code></td><td>Changelog from git history.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <h2>Maintenance and change rules</h2>
+  <div class="two">
+    <div class="card">
+      <h3>Scripts</h3>
+      <ul>
+        <li><code>smoke-test-extensions.sh</code>: load with and without tools; permission-gate blocks a dangerous and a credential command and allows a benign one; protected-paths blocks <code>.env</code> via tool and via bash redirection, allows read-only mentions; git-checkpoint behaves in git and non-git dirs. Default model sonnet-5, overridable with <code>--model</code>.</li>
+        <li><code>session-usage-report.py</code>: cost and cache report across all sessions and archives.</li>
+        <li><code>archive-old-sessions.sh</code>: archives sessions older than 90 days; <code>--dry-run</code> first.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Rules from <code>AGENTS.md</code></h3>
+      <ul>
+        <li>Validate the three JSON configs after every edit; a syntax error breaks every pi session on the machine.</li>
+        <li>Any guardrail change ships with a new smoke-test case.</li>
+        <li>Diff the public surface (commands, tools, widgets, settings keys); update README and the decision log.</li>
+        <li>Take a timestamped <code>.bak</code> before scripted edits to live config.</li>
+        <li>Never commit a raw key; <code>grep apiKey</code> must show only Keychain references.</li>
+        <li>Never reintroduce <code>@mariozechner/*</code> imports or the non-existent <code>session_switch</code>/<code>session_fork</code> events.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Repository map</h2>
+<div class="tree">~/.pi/  <span class="c">(svenhornaff/.pi, branch p-mac)</span>
+├── agent/
+│   ├── settings.json            <span class="c">default model, compaction, retry, contextPrune, packages, obsidian</span>
+│   ├── models.json              <span class="c">providers + pricing, Keychain references only</span>
+│   ├── trust.json               <span class="c">3 trusted projects</span>
+│   ├── extensions/              <span class="c">10 .ts files + retired status-footer</span>
+│   ├── prompts/                 <span class="c">high-stakes-web-research, standup, changelog</span>
+│   ├── themes/                  <span class="c">11 themes</span>
+│   ├── bin/                     <span class="c">rg, fd</span>
+│   └── auth.json · sessions/    <span class="c">gitignored</span>
+├── web-search.json              <span class="c">providers, routing, SSRF allow-list</span>
+├── searxng/                     <span class="c">docker-compose + settings.yml</span>
+├── scripts/                     <span class="c">smoke test, usage report, session archive</span>
+├── AGENTS.md · README.md        <span class="c">rules and overview</span>
+├── setup-refactor-plan.md       <span class="c">decision log, append-only</span>
+├── prompt-cache-analysis.md     <span class="c">€275 incident root cause</span>
+├── llmhub-model-pricing.md      <span class="c">35-model LLMHub price catalog</span>
+├── t-mac-upstream-assessment.md <span class="c">what to port from t-mac, what stays branch-local</span>
+└── Pi-Setup-Guide.md            <span class="c">stale, see findings</span></div>
+</section>
+
+<section>
+  <h2>History</h2>
+  <div class="timeline">
+    <div class="ev"><time>2026-08-29</time><div>Repo initialised; AGENTS.md, README, LICENSE. Same day: cache-warm, then pi-lens, rpiv-ask-user-question, statusline-pi, Plannotator and advisor-pi. protected-paths bash guard fixed; footer decluttered.</div></div>
+    <div class="ev"><time>2026-08-31</time><div>Portable fixes ported from <code>t-mac</code>; branches stay separate by design. <span class="h">cebb06c</span></div></div>
+    <div class="ev hl"><time>2026-09-07</time><div>OpenRouter <code>claude-sonnet-5</code> fixed, smoke test 0/10 → 10/10. Current baseline. <span class="h">3f49563</span></div></div>
+    <div class="ev"><time>2026-09-23 → 26</time><div>Subagent layer attempt: vendored runtime, eval framework, benchmark repos. Tagged <code>subagent-attempt-1</code>. <span class="h">e21d947 … 61aa68b</span></div></div>
+    <div class="ev rv"><time>2026-09-27</time><div>All four subagent commits reverted: too heavy for a personal harness. Tree identical to 3f49563. <span class="h">138a9f6 … 9ac6f5a</span></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Findings</h2>
+  <div class="card">
+    <div class="finding"><span class="pill p-ok">fixed</span><div><code>Pi-Setup-Guide.md</code> regenerated (pi 0.87.1, git branches, all 8 packages, 10 smoke checks). Fixed in the 2026-09-27 docs commit.</div></div>
+    <div class="finding"><span class="pill p-warn">version</span><div><code>settings.json</code> records <code>lastChangelogVersion 0.85.1</code>; pi 0.87.1 is installed. The revert put the old marker back. Harmless, but pi will show the changelog again.</div></div>
+    <div class="finding"><span class="pill p-warn">open</span><div>LLMHub cache fix is configured but not live-verified end to end. It was blocked by the project's monthly spend cap.</div></div>
+    <div class="finding"><span class="pill p-warn">open</span><div>No sandbox. Guardrails are regex and substring checks, and <code>pi-web-access</code> fetches arbitrary URLs. Container or VM isolation for the trusted projects remains the one open item from the recommended-next-steps list.</div></div>
+    <div class="finding"><span class="pill p-ok">fixed</span><div><code>setup-refactor-plan.md</code> status markers for web search and MCP set to resolved; new 2026-09-27 entry logs the subagent revert. README <code>obsidian-sync</code> description corrected. Same commit.</div></div>
+    <div class="finding"><span class="pill p-info">note</span><div><code>trust.json</code> and the Obsidian vault use <code>/Users/brooklyn</code> paths. Correct for this machine; they are why the branch must never be merged into <code>t-mac</code>.</div></div>
+    <div class="finding"><span class="pill p-ok">by design</span><div>MCP deliberately not configured; the old <code>pi-mcp-adapter</code> was removed as unused.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Next, if delegation comes back</h2>
+  <p>Proposal only, nothing installed. It replaces the rolled-back runtime with two maintained packages and one agent file.</p>
+  <div class="tbl">
+  <table>
+    <thead><tr><th>Need</th><th>Candidate</th><th>Why it fits</th></tr></thead>
+    <tbody>
+      <tr><td>Fresh-context review</td><td><code>earendil-works/pi-review</code> (<code>/review</code>, <code>/end-review</code>)</td><td>Runs as a branch of your own session, so guardrails and <code>/session-stats</code> apply unchanged. Used by the pi maintainers.</td></tr>
+      <tr><td>Exploration without context bloat</td><td><code>@mjakl/pi-subagent</code> + one <code>explore.md</code></td><td>Children are separate pi processes that load your global extensions; UI prompts are auto-cancelled, so permission-gate fails closed. Set <code>tools: read,grep,find,ls</code> so the advisor tool stays out.</td></tr>
+    </tbody>
+  </table>
+  </div>
+<pre>pi install git:github.com/earendil-works/pi-review
+pi install npm:@mjakl/pi-subagent</pre>
+</section>
+
+<footer>Source: <code>svenhornaff/.pi</code> branch <code>p-mac</code> at <code>9ac6f5a</code>, read directly from the repository on 2026-09-27. Runtime state on the Mac (installed packages, Keychain entries, sessions) was not inspected.</footer>
+
+</div>
+
+</body>
+</html>

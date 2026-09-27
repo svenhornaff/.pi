@@ -265,6 +265,7 @@ The full change checklist lives in `AGENTS.md`.
 | `README.md` | Overview, layout, new-machine setup. |
 | `AGENTS.md` | Rules and change checklist for any agent editing this repo. |
 | `Pi-Setup-Guide.md` | This file: as-is reference. |
+| `docs/p-mac-harness.html` | Visual overview with architecture diagrams (open in a browser). |
 | `setup-refactor-plan.md` | Append-only decision and implementation log. |
 | `prompt-cache-analysis.md` | Root cause of the ~€275 uncached LLMHub session. |
 | `llmhub-model-pricing.md` | Authoritative 35-model LLMHub price catalog. |
