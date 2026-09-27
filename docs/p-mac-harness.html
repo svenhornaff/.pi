@@ -9,25 +9,14 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 :root{
+  color-scheme:light;
   --ground:#F3F6F7; --panel:#FFFFFF; --ink:#16212B; --muted:#586674; --line:#D3DBE1; --soft:#E8EEF1;
   --accent:#0E6A86; --accent-soft:#DCEEF3; --ok:#2E7A4E; --ok-soft:#E0F1E7; --warn:#A55A0B; --warn-soft:#FBEBD8; --bad:#B03A2E; --bad-soft:#F8E1DE;
   --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
   --mono:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --ground:#0E151B; --panel:#151F27; --ink:#E3EAEF; --muted:#98A7B4; --line:#2A3943; --soft:#1B2831;
-    --accent:#5DB8D4; --accent-soft:#16323D; --ok:#6CC592; --ok-soft:#173026; --warn:#E6A45A; --warn-soft:#352513; --bad:#EE8577; --bad-soft:#3A1D1A;
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --ground:#0E151B; --panel:#151F27; --ink:#E3EAEF; --muted:#98A7B4; --line:#2A3943; --soft:#1B2831;
-  --accent:#5DB8D4; --accent-soft:#16323D; --ok:#6CC592; --ok-soft:#173026; --warn:#E6A45A; --warn-soft:#352513; --bad:#EE8577; --bad-soft:#3A1D1A;
-}
-*{box-sizing:border-box}
+ *{box-sizing:border-box}
 body{background:var(--ground);color:var(--ink);font:15px/1.6 var(--body);margin:0}
 .wrap{max-width:1040px;margin:0 auto;padding-inline:20px;padding-block:40px 64px;display:flex;flex-direction:column;gap:44px}
 h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.15}
